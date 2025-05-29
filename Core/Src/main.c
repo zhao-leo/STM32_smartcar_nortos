@@ -27,6 +27,8 @@
 #include <stdio.h>
 #include "../../Utils/Inc/ssd1306.h"
 #include "../../Utils/Inc/ssd1306_fonts.h"
+#include "../../Utils/Inc/PS2Mouse.h"
+#include "../../Utils/Inc/utils.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -47,6 +49,12 @@
 /* Private variables ---------------------------------------------------------*/
 
 /* USER CODE BEGIN PV */
+
+PS2Mouse_Data_t mouseData;
+
+// 显示用变量
+int16_t displayValue_x = 0;
+int16_t displayValue_y = 0;
 
 /* USER CODE END PV */
 
@@ -96,10 +104,20 @@ int main(void)
 
   // Init uart receive
   UART_StartReceive();
-
+  DWT_Init();
+  // A0=CLOCK A1=DATA
+  PS2Mouse_Init(GPIOA, GPIO_PIN_0, GPIOA, GPIO_PIN_1, PS2_STREAM_MODE);
+  printf("PS/2鼠标初始化完成\r\n");
   printf("系统已启动，串口配置完成！\r\n");
   ssd1306_Init();
   ssd1306_Fill(White);
+  ssd1306_UpdateScreen();
+  HAL_Delay(500);
+  ssd1306_Fill(Black);
+  ssd1306_UpdateScreen();
+  // 显示标题
+  ssd1306_SetCursor(0, 0);
+  ssd1306_WriteString("Mouse Data:", Font_7x10, White);
   ssd1306_UpdateScreen();
   /* USER CODE END 2 */
 
@@ -108,9 +126,53 @@ int main(void)
   while (1)
   {
     /* USER CODE END WHILE */
-    HAL_Delay(1000); // 延时1秒
-    printf("系统运行时间: %lu ms\r\n", HAL_GetTick());
-    /* USER CODE BEGIN 3 */
+    // 读取鼠标数据
+    if (PS2Mouse_ReadData(&mouseData))
+    {
+      // 更新显示值
+      displayValue_x += mouseData.x;
+      displayValue_y += mouseData.y;
+
+      // 限制范围在0-100
+      if (displayValue_x > 1000)
+        displayValue_x = 0;
+      if (displayValue_x < -1000)
+        displayValue_x = 0;
+      if (displayValue_y > 1000)
+        displayValue_y = 0;
+      if (displayValue_y < -1000)
+        displayValue_y = 0;
+      // 在OLED上显示鼠标数据
+
+      char x_str[16];
+      char y_str[16];
+      sprintf(x_str, "%d", displayValue_x);
+      sprintf(y_str, "%d", displayValue_y);
+
+      char dx_str[16];
+      char dy_str[16];
+      sprintf(dx_str, "%d", mouseData.x);
+      sprintf(dy_str, "%d", mouseData.y);
+      if (mouseData.x != 0 || mouseData.y != 0)
+      {
+        printf(dx_str);
+        printf("\r\n");
+        printf(dy_str);
+        printf("\r\n");
+      }
+
+      ssd1306_SetCursor(0, 10);
+      ssd1306_WriteString("X: ", Font_7x10, White);
+      ssd1306_SetCursor(20, 10);
+      ssd1306_WriteString(x_str, Font_7x10, White);
+      ssd1306_SetCursor(0, 20);
+      ssd1306_WriteString("Y: ", Font_7x10, White);
+      ssd1306_SetCursor(20, 20);
+      ssd1306_WriteString(y_str, Font_7x10, White);
+      ssd1306_UpdateScreen();
+
+      /* USER CODE BEGIN 3 */
+    }
   }
   /* USER CODE END 3 */
 }

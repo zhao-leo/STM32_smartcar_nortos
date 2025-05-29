@@ -19,6 +19,8 @@ target_include_directories(smartcar INTERFACE
 target_sources(smartcar INTERFACE
     ../../Utils/Src/ssd1306.c
     ../../Utils/Src/ssd1306_fonts.c
+    ../../Utils/Src/PS2Mouse.c
+    ../../Utils/Src/utils.c
 
 )
 
