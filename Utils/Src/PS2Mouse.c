@@ -77,18 +77,13 @@ void PS2Mouse_Init(GPIO_TypeDef *clockPort, uint16_t clockPin,
 // 读取鼠标数据
 uint8_t PS2Mouse_ReadData(PS2Mouse_Data_t *mouseData)
 {
-    printf("PS2Mouse: 开始读取数据...\r\n");
     uint8_t status;
 
-    // 发送读取数据命令
-    printf("PS2Mouse: 发送读取数据命令(0xEB)...\r\n");
     PS2Mouse_Write(0xEB);
-    uint8_t ack = PS2Mouse_ReadByte();
-    printf("PS2Mouse: 读取数据应答=0x%02X (预期:0xFA)\r\n", ack);
+    PS2Mouse_ReadByte();
     
     // 读取状态字节和移动数据
     status = PS2Mouse_ReadByte();
-    printf("PS2Mouse: 状态字节=0x%02X\r\n", status);
     
     // 解析按钮状态
     mouseData->leftBtn = (status & 0x01) ? 1 : 0;

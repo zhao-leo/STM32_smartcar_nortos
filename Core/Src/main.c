@@ -108,7 +108,9 @@ int main(void)
   // A0=CLOCK A1=DATA
   PS2Mouse_Init(GPIOA, GPIO_PIN_0, GPIOA, GPIO_PIN_1, PS2_STREAM_MODE);
   printf("PS/2鼠标初始化完成\r\n");
+  PS2Mouse_SetScaling2To1();
   printf("系统已启动，串口配置完成！\r\n");
+  HAL_Delay(500);
   ssd1306_Init();
   ssd1306_Fill(White);
   ssd1306_UpdateScreen();
@@ -125,6 +127,7 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
+    ssd1306_Fill(Black);
     /* USER CODE END WHILE */
     // 读取鼠标数据
     if (PS2Mouse_ReadData(&mouseData))
@@ -134,43 +137,47 @@ int main(void)
       displayValue_y += mouseData.y;
 
       // 限制范围在0-100
-      if (displayValue_x > 1000)
+      if (displayValue_x > 9999)
         displayValue_x = 0;
-      if (displayValue_x < -1000)
+      if (displayValue_x < -9999)
         displayValue_x = 0;
-      if (displayValue_y > 1000)
+      if (displayValue_y > 9999)
         displayValue_y = 0;
-      if (displayValue_y < -1000)
+      if (displayValue_y < -9999)
         displayValue_y = 0;
       // 在OLED上显示鼠标数据
 
-      char x_str[16];
-      char y_str[16];
+      char x_str[16]= {0};
+      char y_str[16]= {0};
       sprintf(x_str, "%d", displayValue_x);
       sprintf(y_str, "%d", displayValue_y);
 
-      char dx_str[16];
-      char dy_str[16];
+      char dx_str[16]= {0};
+      char dy_str[16]= {0};
       sprintf(dx_str, "%d", mouseData.x);
       sprintf(dy_str, "%d", mouseData.y);
       if (mouseData.x != 0 || mouseData.y != 0)
       {
-        printf(dx_str);
+        printf("x:");
+        printf(x_str);
         printf("\r\n");
-        printf(dy_str);
+        printf("y:");
+        printf(y_str);
         printf("\r\n");
       }
 
+      ssd1306_SetCursor(0, 0);
+      ssd1306_WriteString("Mouse Data:", Font_7x10, White);
       ssd1306_SetCursor(0, 10);
       ssd1306_WriteString("X: ", Font_7x10, White);
       ssd1306_SetCursor(20, 10);
-      ssd1306_WriteString(x_str, Font_7x10, White);
+      ssd1306_WriteString(dx_str, Font_7x10, White);
       ssd1306_SetCursor(0, 20);
       ssd1306_WriteString("Y: ", Font_7x10, White);
       ssd1306_SetCursor(20, 20);
-      ssd1306_WriteString(y_str, Font_7x10, White);
+      ssd1306_WriteString(dy_str, Font_7x10, White);
       ssd1306_UpdateScreen();
-
+      HAL_Delay(2);  // 延时2ms,即光电模块回报率
       /* USER CODE BEGIN 3 */
     }
   }
