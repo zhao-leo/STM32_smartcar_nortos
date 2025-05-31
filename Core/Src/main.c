@@ -19,16 +19,19 @@
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 #include "i2c.h"
+#include "tim.h"
 #include "usart.h"
 #include "gpio.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include <stdio.h>
-#include "../../Utils/Inc/ssd1306.h"
-#include "../../Utils/Inc/ssd1306_fonts.h"
-#include "../../Utils/Inc/PS2Mouse.h"
-#include "../../Utils/Inc/utils.h"
+#include "ssd1306.h"
+#include "ssd1306_fonts.h"
+#include "PS2Mouse.h"
+#include "utils.h"
+#include <string.h>
+#include "mpu6050.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -50,12 +53,15 @@
 
 /* USER CODE BEGIN PV */
 
+MPU6050_t MPU6050;
+
 PS2Mouse_Data_t mouseData;
 
-// 显示用变量
+// 显示用变�?????
 int16_t displayValue_x = 0;
 int16_t displayValue_y = 0;
 
+uint8_t serialBuf[100];
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -100,87 +106,94 @@ int main(void)
   MX_GPIO_Init();
   MX_USART3_UART_Init();
   MX_I2C1_Init();
+  MX_TIM2_Init();
   /* USER CODE BEGIN 2 */
 
   // Init uart receive
   UART_StartReceive();
-  DWT_Init();
-  // A0=CLOCK A1=DATA
-  PS2Mouse_Init(GPIOA, GPIO_PIN_0, GPIOA, GPIO_PIN_1, PS2_STREAM_MODE);
-  printf("PS/2鼠标初始化完成\r\n");
-  PS2Mouse_SetScaling2To1();
-  printf("系统已启动，串口配置完成！\r\n");
+  // DWT_Init();
+  // // A0=CLOCK A1=DATA
+  // PS2Mouse_Init(GPIOA, GPIO_PIN_0, GPIOA, GPIO_PIN_1, PS2_STREAM_MODE);
+  // printf("PS/2鼠标初始化完成\r\n");
+  // PS2Mouse_SetScaling2To1();
+  // printf("系统已启动，串口配置完成！\r\n");
   HAL_Delay(500);
-  ssd1306_Init();
-  ssd1306_Fill(White);
-  ssd1306_UpdateScreen();
+  while (MPU6050_Init(&hi2c1) == 1)
+    ;
+  // ssd1306_Init();
+  // ssd1306_Fill(White);
+  // ssd1306_UpdateScreen();
   HAL_Delay(500);
-  ssd1306_Fill(Black);
-  ssd1306_UpdateScreen();
+  // ssd1306_Fill(Black);
+  // ssd1306_UpdateScreen();
   // 显示标题
-  ssd1306_SetCursor(0, 0);
-  ssd1306_WriteString("Mouse Data:", Font_7x10, White);
-  ssd1306_UpdateScreen();
+  // ssd1306_SetCursor(0, 0);
+  // ssd1306_WriteString("Mouse Data:", Font_7x10, White);
+  // ssd1306_UpdateScreen();
+  HAL_TIM_Base_Start_IT(&htim2);
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-    ssd1306_Fill(Black);
-    /* USER CODE END WHILE */
+    // ssd1306_Fill(Black);
     // 读取鼠标数据
-    if (PS2Mouse_ReadData(&mouseData))
-    {
-      // 更新显示值
-      displayValue_x += mouseData.x;
-      displayValue_y += mouseData.y;
+    // if (PS2Mouse_ReadData(&mouseData))
+    // {
+    //   // 更新显示�?????
+    //   displayValue_x += mouseData.x;
+    //   displayValue_y += mouseData.y;
 
-      // 限制范围在0-100
-      if (displayValue_x > 9999)
-        displayValue_x = 0;
-      if (displayValue_x < -9999)
-        displayValue_x = 0;
-      if (displayValue_y > 9999)
-        displayValue_y = 0;
-      if (displayValue_y < -9999)
-        displayValue_y = 0;
-      // 在OLED上显示鼠标数据
+    //   // 限制范围�?????0-100
+    //   if (displayValue_x > 9999)
+    //     displayValue_x = 0;
+    //   if (displayValue_x < -9999)
+    //     displayValue_x = 0;
+    //   if (displayValue_y > 9999)
+    //     displayValue_y = 0;
+    //   if (displayValue_y < -9999)
+    //     displayValue_y = 0;
+    // 在OLED上显示鼠标数�?????
 
-      char x_str[16]= {0};
-      char y_str[16]= {0};
-      sprintf(x_str, "%d", displayValue_x);
-      sprintf(y_str, "%d", displayValue_y);
+    // char x_str[16]= {0};
+    // char y_str[16]= {0};
+    // sprintf(x_str, "%d", displayValue_x);
+    // sprintf(y_str, "%d", displayValue_y);
 
-      char dx_str[16]= {0};
-      char dy_str[16]= {0};
-      sprintf(dx_str, "%d", mouseData.x);
-      sprintf(dy_str, "%d", mouseData.y);
-      if (mouseData.x != 0 || mouseData.y != 0)
-      {
-        printf("x:");
-        printf(x_str);
-        printf("\r\n");
-        printf("y:");
-        printf(y_str);
-        printf("\r\n");
-      }
+    // char dx_str[16] = {0};
+    // char dy_str[16] = {0};
+    // sprintf(dx_str, "%d", mouseData.x);
+    // sprintf(dy_str, "%d", mouseData.y);
+    // if (mouseData.x != 0 || mouseData.y != 0)
+    // {
+    //   printf("x:");
+    //   printf(x_str);
+    //   printf("\r\n");
+    //   printf("y:");
+    //   printf(y_str);
+    //   printf("\r\n");
+    // }
 
-      ssd1306_SetCursor(0, 0);
-      ssd1306_WriteString("Mouse Data:", Font_7x10, White);
-      ssd1306_SetCursor(0, 10);
-      ssd1306_WriteString("X: ", Font_7x10, White);
-      ssd1306_SetCursor(20, 10);
-      ssd1306_WriteString(dx_str, Font_7x10, White);
-      ssd1306_SetCursor(0, 20);
-      ssd1306_WriteString("Y: ", Font_7x10, White);
-      ssd1306_SetCursor(20, 20);
-      ssd1306_WriteString(dy_str, Font_7x10, White);
-      ssd1306_UpdateScreen();
-      HAL_Delay(2);  // 延时2ms,即光电模块回报率
-      /* USER CODE BEGIN 3 */
-    }
+    // ssd1306_SetCursor(0, 0);
+    // ssd1306_WriteString("Mouse Data:", Font_7x10, White);
+    // ssd1306_SetCursor(0, 10);
+    // ssd1306_WriteString("X: ", Font_7x10, White);
+    // ssd1306_SetCursor(20, 10);
+    // ssd1306_WriteString(dx_str, Font_7x10, White);
+    // ssd1306_SetCursor(0, 20);
+    // ssd1306_WriteString("Y: ", Font_7x10, White);
+    // ssd1306_SetCursor(20, 20);
+    // ssd1306_WriteString(dy_str, Font_7x10, White);
+    // ssd1306_UpdateScreen();
+
+    //   HAL_Delay(2); // 延时2ms,即光电模块回报率
+    // }
   }
+  /* USER CODE END WHILE */
+
+  /* USER CODE BEGIN 3 */
+
   /* USER CODE END 3 */
 }
 
@@ -223,6 +236,25 @@ void SystemClock_Config(void)
 }
 
 /* USER CODE BEGIN 4 */
+
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
+{
+  // Check if timer has triggered and update attitude
+  if (htim == &htim2)
+  {
+    HAL_ResumeTick();
+    MPU6050_Read_All(&hi2c1, &MPU6050);
+    char x_str[16] = {0};
+    char y_str[16] = {0};
+    char temp_str[16] = {0};
+    sprintf(temp_str, "%d", 3);
+    sprintf(x_str, "%.2f", MPU6050.KalmanAngleX);
+    sprintf(y_str, "%.2f", MPU6050.KalmanAngleY);
+
+    printf("MPUx: %s, MPUy: %s\r\n", x_str, y_str);
+    HAL_SuspendTick();
+  }
+}
 
 /* USER CODE END 4 */
 

@@ -133,13 +133,13 @@ PUTCHAR_PROTOTYPE
   return ch;
 }
 
-// 定义串口接收缓冲区
+// 定义串口接收缓冲�?
 #define UART_RX_BUFFER_SIZE 256
 uint8_t uartRxBuffer[UART_RX_BUFFER_SIZE];
 uint16_t uartRxIndex = 0;
 uint8_t uartRxTemp; // 用于存储单个接收字节
 
-// 初始化串口接收
+// 初始化串口接�?
 void UART_StartReceive(void)
 {
   uartRxIndex = 0;
@@ -154,22 +154,22 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
     // 将接收到的字符放入缓冲区
     uartRxBuffer[uartRxIndex++] = uartRxTemp;
     
-    // 缓冲区溢出保护
+    // 缓冲区溢出保�?
     if(uartRxIndex >= UART_RX_BUFFER_SIZE)
     {
       uartRxIndex = 0;
     }
     
-    // 如果收到回车或换行符，可以进行处理
+    // 如果收到回车或换行符，可以进行处�?
     if(uartRxTemp == '\r' || uartRxTemp == '\n')
     {
-      // 在此添加处理接收到完整行的代码
+      // 在此添加处理接收到完整行的代�?
       uartRxBuffer[uartRxIndex-1] = '\0'; // 将回车换行替换为字符串结束符
-      printf("接收到数据: %s\r\n", uartRxBuffer);
+      printf("接收到数�?: %s\r\n", uartRxBuffer);
       uartRxIndex = 0; // 重置索引
     }
     
-    // 继续下一次接收
+    // 继续下一次接�?
     HAL_UART_Receive_IT(&huart3, &uartRxTemp, 1);
   }
 }
