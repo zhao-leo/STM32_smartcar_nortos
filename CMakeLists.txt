@@ -54,6 +54,8 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     Utils/ssd1306_fonts.c
     Utils/utils.c
     Utils/mpu6050.c
+    Utils/ahrs_hal.c
+    Utils/icm42688_hal.c
 )
 
 # Add include paths
