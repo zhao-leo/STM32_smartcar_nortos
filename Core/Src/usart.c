@@ -21,7 +21,14 @@
 #include "usart.h"
 
 /* USER CODE BEGIN 0 */
-
+#include "string.h"
+#include "stdlib.h"
+#include "pid_control.h"
+#define UART_RX_BUFFER_SIZE 64
+static uint8_t uartRxBuffer[UART_RX_BUFFER_SIZE];
+static uint8_t uartRxData;
+static uint8_t rxBufferIndex = 0;
+static uint8_t rxBufferFlag = 0;
 /* USER CODE END 0 */
 
 UART_HandleTypeDef huart3;
@@ -133,17 +140,12 @@ PUTCHAR_PROTOTYPE
   return ch;
 }
 
-// 定义串口接收缓冲�?
-#define UART_RX_BUFFER_SIZE 256
-uint8_t uartRxBuffer[UART_RX_BUFFER_SIZE];
-uint16_t uartRxIndex = 0;
-uint8_t uartRxTemp; // 用于存储单个接收字节
 
-// 初始化串口接�?
+
+// 初始化串口接�?
 void UART_StartReceive(void)
 {
-  uartRxIndex = 0;
-  HAL_UART_Receive_IT(&huart3, &uartRxTemp, 1);
+  HAL_UART_Receive_IT(&huart3, &uartRxData, 1);
 }
 
 // 串口接收完成回调函数
@@ -151,26 +153,177 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
   if(huart->Instance == USART3)
   {
-    // 将接收到的字符放入缓冲区
-    uartRxBuffer[uartRxIndex++] = uartRxTemp;
-    
-    // 缓冲区溢出保�?
-    if(uartRxIndex >= UART_RX_BUFFER_SIZE)
+    // 如果接收到回车或换行，表示一条命令接收完成
+    if(uartRxData == '\r' || uartRxData == '\n')
     {
-      uartRxIndex = 0;
+      if(rxBufferIndex > 0)
+      {
+        // 添加结束符
+        uartRxBuffer[rxBufferIndex] = 0;
+        // 设置接收完成标志
+        rxBufferFlag = 1;
+        // 重置索引
+        rxBufferIndex = 0;
+      }
+    }
+    // 否则将接收到的数据存入缓冲区
+    else if(rxBufferIndex < UART_RX_BUFFER_SIZE - 1)
+    {
+      uartRxBuffer[rxBufferIndex++] = uartRxData;
     }
     
-    // 如果收到回车或换行符，可以进行处�?
-    if(uartRxTemp == '\r' || uartRxTemp == '\n')
-    {
-      // 在此添加处理接收到完整行的代�?
-      uartRxBuffer[uartRxIndex-1] = '\0'; // 将回车换行替换为字符串结束符
-      printf("接收到数�?: %s\r\n", uartRxBuffer);
-      uartRxIndex = 0; // 重置索引
-    }
+    // 继续接收下一个字节
+    HAL_UART_Receive_IT(&huart3, &uartRxData, 1);
+  }
+}
+
+/**
+  * @brief 解析串口接收到的PID参数
+  * @retval 无
+  */
+void UART_ParsePIDCommand(void)
+{
+  if(rxBufferFlag)
+  {
+    // 清除接收标志
+    rxBufferFlag = 0;
     
-    // 继续下一次接�?
-    HAL_UART_Receive_IT(&huart3, &uartRxTemp, 1);
+    char *cmd = (char*)uartRxBuffer;
+    char param;
+    float value;
+    
+    // 调试输出接收到的原始命令
+    printf("接收到命令: %s\r\n", cmd);
+    
+    // 解析命令格式: p=1.23 或 i=0.45 或 d=0.67
+    if(sscanf(cmd, "%c=%f", &param, &value) == 2)
+    {
+      // 根据参数类型更新对应的PID值
+      switch(param)
+      {
+        case 'p':
+        case 'P':
+          pid_kp_a = value;
+          pid_motor_a.integral = 0.0f;
+          pid_motor_a.derivative = 0.0f;
+          printf("set A Kp=%.2f\r\n", pid_kp_a);
+          break;
+          
+        case 'i':
+        case 'I':
+          pid_ki_a = value;
+          pid_motor_a.integral = 0.0f;
+          pid_motor_a.derivative = 0.0f;
+          printf("set A Ki=%.2f\r\n", pid_ki_a);
+          break;
+          
+        case 'd':
+        case 'D':
+          pid_kd_a = value;
+          pid_motor_a.integral = 0.0f;
+          pid_motor_a.derivative = 0.0f;
+          printf("set A Kd=%.2f\r\n", pid_kd_a);
+          break;
+          
+        case 'q':
+        case 'Q':
+          pid_kp_b = value;
+          pid_motor_b.integral = 0.0f;
+          pid_motor_b.derivative = 0.0f;
+          printf("set B Kp=%.2f\r\n", pid_kp_b);
+          break;
+          
+        case 'w':
+        case 'W':
+          pid_ki_b = value;
+          pid_motor_b.integral = 0.0f;
+          pid_motor_b.derivative = 0.0f;
+          printf("set B Ki=%.2f\r\n", pid_ki_b);
+          break;
+          
+        case 'e':
+        case 'E':
+          pid_kd_b = value;
+          pid_motor_b.integral = 0.0f;
+          pid_motor_b.derivative = 0.0f;
+          printf("set B Kd=%.2f\r\n", pid_kd_b);
+          break;
+          
+        default:
+          printf("未知参数: %c\r\n", param);
+          break;
+      }
+    }
+    else
+    {
+      // 尝试其他解析方式，检查缓冲区是否包含有效的等号
+      char *equalsign = strchr(cmd, '=');
+      if (equalsign != NULL) {
+        // 如果找到等号，可能是格式解析问题
+        param = cmd[0]; // 获取第一个字符作为参数
+        value = atof(equalsign + 1); // 从等号后面开始解析浮点数
+        
+        printf("备用解析: 参数=%c, 值=%.2f\r\n", param, value);
+        
+        // 使用备用解析结果处理参数
+        switch(param)
+        {
+          case 'p':
+          case 'P':
+            pid_kp_a = value;
+            pid_motor_a.integral = 0.0f;
+            pid_motor_a.derivative = 0.0f;
+            printf("set A Kp=%.2f\r\n", pid_kp_a);
+            break;
+            
+          case 'i':
+          case 'I':
+            pid_ki_a = value;
+            pid_motor_a.integral = 0.0f;
+            pid_motor_a.derivative = 0.0f;
+            printf("set A Ki=%.2f\r\n", pid_ki_a);
+            break;
+            
+          case 'd':
+          case 'D':
+            pid_kd_a = value;
+            pid_motor_a.integral = 0.0f;
+            pid_motor_a.derivative = 0.0f;
+            printf("set A Kd=%.2f\r\n", pid_kd_a);
+            break;
+            
+          case 'q':
+          case 'Q':
+            pid_kp_b = value;
+            pid_motor_b.integral = 0.0f;
+            pid_motor_b.derivative = 0.0f;
+            printf("set B Kp=%.2f\r\n", pid_kp_b);
+            break;
+            
+          case 'w':
+          case 'W':
+            pid_ki_b = value;
+            pid_motor_b.integral = 0.0f;
+            pid_motor_b.derivative = 0.0f;
+            printf("set B Ki=%.2f\r\n", pid_ki_b);
+            break;
+            
+          case 'e':
+          case 'E':
+            pid_kd_b = value;
+            pid_motor_b.integral = 0.0f;
+            pid_motor_b.derivative = 0.0f;
+            printf("set B Kd=%.2f\r\n", pid_kd_b);
+            break;
+            
+          default:
+            printf("未知参数: %c\r\n", param);
+            break;
+        }
+      } else {
+        printf("please put p=1.23 or i=0.45 or d=0.67\r\n");
+      }
+    }
   }
 }
 /* USER CODE END 1 */

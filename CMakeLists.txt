@@ -57,6 +57,7 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     Utils/ahrs_hal.c
     Utils/icm42688_hal.c
     Utils/encoder.c
+    Utils/pid_control.c
 )
 
 # Add include paths

@@ -34,6 +34,7 @@
 #include "mpu6050.h"
 #include "motor.h"
 #include "encoder.h"
+#include "pid_control.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -146,14 +147,17 @@ int main(void)
   HAL_TIM_Encoder_Start(&htim3, TIM_CHANNEL_2);
   Motor_Init();
   Encoder_Init();
-  Motor_SetSpeed(1, 500, MOTOR_FORWARD); 
-  Motor_SetSpeed(2, 500, MOTOR_FORWARD);
+  PID_Init(&pid_motor_a);
+  PID_SetSpeed(PID_MOTOR_A, 120);
+  PID_Init(&pid_motor_b);
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
   {
+    UART_ParsePIDCommand();
+    
     // ssd1306_Fill(Black);
     // 读取鼠标数据
     // if (PS2Mouse_ReadData(&mouseData))
@@ -277,7 +281,8 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
    if(times==99){
     Encoder_Update(&encoderA, ENCODER_A);
     Encoder_Update(&encoderB, ENCODER_B);
-    printf("EncoderA: %.2f, EncoderB: %.2f\r\n", encoderA.speed_rpm, encoderB.speed_rpm);
+    PID_Update();
+    printf("EncoderA: %.2f, EncoderB: %.2f, Kp:%.2f, Ki:%.2f, Kd:%.2f, i:%.2f, d:%.2f\r\n", encoderA.speed_rpm, encoderB.speed_rpm, pid_motor_a.Kp, pid_motor_a.Ki, pid_motor_a.Kd, pid_motor_a.integral,pid_motor_a.derivative);
     times=0;
    }
    else {

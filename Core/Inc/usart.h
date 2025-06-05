@@ -36,6 +36,7 @@ extern UART_HandleTypeDef huart3;
 
 /* USER CODE BEGIN Private defines */
 void UART_StartReceive(void);
+void UART_ParsePIDCommand(void);
 /* USER CODE END Private defines */
 
 void MX_USART3_UART_Init(void);
