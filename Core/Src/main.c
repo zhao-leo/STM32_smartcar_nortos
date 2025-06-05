@@ -32,6 +32,8 @@
 #include "utils.h"
 #include <string.h>
 #include "mpu6050.h"
+#include "motor.h"
+#include "encoder.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -57,11 +59,15 @@ MPU6050_t MPU6050;
 
 PS2Mouse_Data_t mouseData;
 
-// 显示用变�?????
+// 显示用变�???????
 int16_t displayValue_x = 0;
 int16_t displayValue_y = 0;
+int16_t times = 0;
 
 uint8_t serialBuf[100];
+
+extern Encoder_TypeDef encoderA;  
+extern Encoder_TypeDef encoderB; 
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -76,9 +82,9 @@ void SystemClock_Config(void);
 /* USER CODE END 0 */
 
 /**
- * @brief  The application entry point.
- * @retval int
- */
+  * @brief  The application entry point.
+  * @retval int
+  */
 int main(void)
 {
 
@@ -107,6 +113,9 @@ int main(void)
   MX_USART3_UART_Init();
   MX_I2C1_Init();
   MX_TIM2_Init();
+  MX_TIM1_Init();
+  MX_TIM3_Init();
+  MX_TIM4_Init();
   /* USER CODE BEGIN 2 */
 
   // Init uart receive
@@ -117,13 +126,13 @@ int main(void)
   // printf("PS/2鼠标初始化完成\r\n");
   // PS2Mouse_SetScaling2To1();
   // printf("系统已启动，串口配置完成！\r\n");
-  HAL_Delay(500);
-  while (MPU6050_Init(&hi2c1) == 1)
-    ;
+  // HAL_Delay(500);
+  // while (MPU6050_Init(&hi2c1) == 1)
+  //   ;
   // ssd1306_Init();
   // ssd1306_Fill(White);
   // ssd1306_UpdateScreen();
-  HAL_Delay(500);
+  // HAL_Delay(500);
   // ssd1306_Fill(Black);
   // ssd1306_UpdateScreen();
   // 显示标题
@@ -131,6 +140,14 @@ int main(void)
   // ssd1306_WriteString("Mouse Data:", Font_7x10, White);
   // ssd1306_UpdateScreen();
   HAL_TIM_Base_Start_IT(&htim2);
+  HAL_TIM_Encoder_Start(&htim1, TIM_CHANNEL_1);
+  HAL_TIM_Encoder_Start(&htim1, TIM_CHANNEL_2);
+  HAL_TIM_Encoder_Start(&htim3, TIM_CHANNEL_1);
+  HAL_TIM_Encoder_Start(&htim3, TIM_CHANNEL_2);
+  Motor_Init();
+  Encoder_Init();
+  Motor_SetSpeed(1, 500, MOTOR_FORWARD); 
+  Motor_SetSpeed(2, 500, MOTOR_FORWARD);
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -141,11 +158,11 @@ int main(void)
     // 读取鼠标数据
     // if (PS2Mouse_ReadData(&mouseData))
     // {
-    //   // 更新显示�?????
+    //   // 更新显示�???????
     //   displayValue_x += mouseData.x;
     //   displayValue_y += mouseData.y;
 
-    //   // 限制范围�?????0-100
+    //   // 限制范围�???????0-100
     //   if (displayValue_x > 9999)
     //     displayValue_x = 0;
     //   if (displayValue_x < -9999)
@@ -154,7 +171,7 @@ int main(void)
     //     displayValue_y = 0;
     //   if (displayValue_y < -9999)
     //     displayValue_y = 0;
-    // 在OLED上显示鼠标数�?????
+    // 在OLED上显示鼠标数�???????
 
     // char x_str[16]= {0};
     // char y_str[16]= {0};
@@ -190,25 +207,25 @@ int main(void)
     //   HAL_Delay(2); // 延时2ms,即光电模块回报率
     // }
   }
-  /* USER CODE END WHILE */
+    /* USER CODE END WHILE */
 
-  /* USER CODE BEGIN 3 */
+    /* USER CODE BEGIN 3 */
 
   /* USER CODE END 3 */
 }
 
 /**
- * @brief System Clock Configuration
- * @retval None
- */
+  * @brief System Clock Configuration
+  * @retval None
+  */
 void SystemClock_Config(void)
 {
   RCC_OscInitTypeDef RCC_OscInitStruct = {0};
   RCC_ClkInitTypeDef RCC_ClkInitStruct = {0};
 
   /** Initializes the RCC Oscillators according to the specified parameters
-   * in the RCC_OscInitTypeDef structure.
-   */
+  * in the RCC_OscInitTypeDef structure.
+  */
   RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSE;
   RCC_OscInitStruct.HSEState = RCC_HSE_ON;
   RCC_OscInitStruct.HSEPredivValue = RCC_HSE_PREDIV_DIV1;
@@ -222,8 +239,9 @@ void SystemClock_Config(void)
   }
 
   /** Initializes the CPU, AHB and APB buses clocks
-   */
-  RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK | RCC_CLOCKTYPE_SYSCLK | RCC_CLOCKTYPE_PCLK1 | RCC_CLOCKTYPE_PCLK2;
+  */
+  RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK|RCC_CLOCKTYPE_SYSCLK
+                              |RCC_CLOCKTYPE_PCLK1|RCC_CLOCKTYPE_PCLK2;
   RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
   RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
   RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV2;
@@ -240,9 +258,12 @@ void SystemClock_Config(void)
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
   // Check if timer has triggered and update attitude
+  // This is zhongduan functuon, every 1ms proceed once
   if (htim == &htim2)
   {
     HAL_ResumeTick();
+    /*this is a test code to read MPU6050 data
+
     MPU6050_Read_All(&hi2c1, &MPU6050);
     char x_str[16] = {0};
     char y_str[16] = {0};
@@ -252,16 +273,26 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
     sprintf(y_str, "%.2f", MPU6050.KalmanAngleY);
 
     printf("MPUx: %s, MPUy: %s\r\n", x_str, y_str);
-    HAL_SuspendTick();
+    */
+   if(times==99){
+    Encoder_Update(&encoderA, ENCODER_A);
+    Encoder_Update(&encoderB, ENCODER_B);
+    printf("EncoderA: %.2f, EncoderB: %.2f\r\n", encoderA.speed_rpm, encoderB.speed_rpm);
+    times=0;
+   }
+   else {
+    times++;
+   }
+   HAL_SuspendTick();
   }
 }
 
 /* USER CODE END 4 */
 
 /**
- * @brief  This function is executed in case of error occurrence.
- * @retval None
- */
+  * @brief  This function is executed in case of error occurrence.
+  * @retval None
+  */
 void Error_Handler(void)
 {
   /* USER CODE BEGIN Error_Handler_Debug */
@@ -273,14 +304,14 @@ void Error_Handler(void)
   /* USER CODE END Error_Handler_Debug */
 }
 
-#ifdef USE_FULL_ASSERT
+#ifdef  USE_FULL_ASSERT
 /**
- * @brief  Reports the name of the source file and the source line number
- *         where the assert_param error has occurred.
- * @param  file: pointer to the source file name
- * @param  line: assert_param error line source number
- * @retval None
- */
+  * @brief  Reports the name of the source file and the source line number
+  *         where the assert_param error has occurred.
+  * @param  file: pointer to the source file name
+  * @param  line: assert_param error line source number
+  * @retval None
+  */
 void assert_failed(uint8_t *file, uint32_t line)
 {
   /* USER CODE BEGIN 6 */
