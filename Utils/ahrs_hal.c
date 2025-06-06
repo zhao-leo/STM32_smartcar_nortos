@@ -7,11 +7,11 @@
  * @note ICM42688姿态解算，部分代码参考了lisn3188的代码,以及官方提供的示例。
  */
 
+#include <math.h>
 #include "ahrs_hal.h"
-#ifdef __WIN32__
+#if defined(_WIN32) || defined(_WIN64) || defined(__WIN32__) || defined(__WINDOWS__)
 #include "icm42688_hal.h"
 #endif
-#include <math.h>
 // 显示格式
 //  #define EulerAngle
 

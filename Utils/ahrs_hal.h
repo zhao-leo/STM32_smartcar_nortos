@@ -11,7 +11,7 @@
 #define _AHRS_HAL_H_
 
 #include <stdint.h>
-#ifdef __WIN32__
+#if defined(_WIN32) || defined(_WIN64) || defined(__WIN32__) || defined(__WINDOWS__)
 #include <math.h>
 #endif
 #include <stddef.h>

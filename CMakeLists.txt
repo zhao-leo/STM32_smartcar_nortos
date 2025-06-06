@@ -73,6 +73,10 @@ target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
 target_compile_definitions(${CMAKE_PROJECT_NAME} PRIVATE
     # Add user defined symbols
 )
+if(WIN32)
+    add_compile_definitions(_WIN32)
+endif()
+
 
 # Add linked libraries
 target_link_libraries(${CMAKE_PROJECT_NAME}
