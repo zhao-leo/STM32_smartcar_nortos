@@ -32,9 +32,9 @@ typedef struct {
 
 /* PID控制器参数（可调整） */
 // 为电机A和B分别定义PID参数
-#define PID_KP_A         1.5f     // 电机A比例系数默认值
-#define PID_KI_A         0.8f     // 电机A积分系数默认值
-#define PID_KD_A         0.3f     // 电机A微分系数默认值
+#define PID_KP_A         0.282f     // 电机A比例系数默认值
+#define PID_KI_A         0.026f     // 电机A积分系数默认值
+#define PID_KD_A         0.038f     // 电机A微分系数默认值
 
 #define PID_KP_B         3.0f     // 电机B比例系数默认值
 #define PID_KI_B         0.5f     // 电机B积分系数默认值

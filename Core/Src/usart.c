@@ -142,7 +142,7 @@ PUTCHAR_PROTOTYPE
 
 
 
-// 初始化串口接�?
+// 初始化串口接�??
 void UART_StartReceive(void)
 {
   HAL_UART_Receive_IT(&huart3, &uartRxData, 1);
@@ -153,12 +153,12 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
   if(huart->Instance == USART3)
   {
-    // 如果接收到回车或换行，表示一条命令接收完成
+    // 如果接收到回车或换行，表示一条命令接收完�?
     if(uartRxData == '\r' || uartRxData == '\n')
     {
       if(rxBufferIndex > 0)
       {
-        // 添加结束符
+        // 添加结束�?
         uartRxBuffer[rxBufferIndex] = 0;
         // 设置接收完成标志
         rxBufferFlag = 1;
@@ -172,14 +172,14 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
       uartRxBuffer[rxBufferIndex++] = uartRxData;
     }
     
-    // 继续接收下一个字节
+    // 继续接收下一个字�?
     HAL_UART_Receive_IT(&huart3, &uartRxData, 1);
   }
 }
 
 /**
   * @brief 解析串口接收到的PID参数
-  * @retval 无
+  * @retval �?
   */
 void UART_ParsePIDCommand(void)
 {
@@ -193,12 +193,12 @@ void UART_ParsePIDCommand(void)
     float value;
     
     // 调试输出接收到的原始命令
-    printf("接收到命令: %s\r\n", cmd);
+    printf("接收到命�?: %s\r\n", cmd);
     
-    // 解析命令格式: p=1.23 或 i=0.45 或 d=0.67
+    // 解析命令格式: p=1.23 �? i=0.45 �? d=0.67
     if(sscanf(cmd, "%c=%f", &param, &value) == 2)
     {
-      // 根据参数类型更新对应的PID值
+      // 根据参数类型更新对应的PID�?
       switch(param)
       {
         case 'p':
@@ -256,14 +256,14 @@ void UART_ParsePIDCommand(void)
     }
     else
     {
-      // 尝试其他解析方式，检查缓冲区是否包含有效的等号
+      // 尝试其他解析方式，检查缓冲区是否包含有效的等�?
       char *equalsign = strchr(cmd, '=');
       if (equalsign != NULL) {
         // 如果找到等号，可能是格式解析问题
-        param = cmd[0]; // 获取第一个字符作为参数
+        param = cmd[0]; // 获取第一个字符作为参�?
         value = atof(equalsign + 1); // 从等号后面开始解析浮点数
         
-        printf("备用解析: 参数=%c, 值=%.2f\r\n", param, value);
+        printf("备用解析: 参数=%c, �?=%.2f\r\n", param, value);
         
         // 使用备用解析结果处理参数
         switch(param)

@@ -54,16 +54,17 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     Utils/ssd1306_fonts.c
     Utils/utils.c
     Utils/mpu6050.c
-    Utils/ahrs_hal.c
-    Utils/icm42688_hal.c
     Utils/encoder.c
     Utils/pid_control.c
+    Utils/ahrs_hal.c
+    Utils/icm42688_hal.c
 )
 
 # Add include paths
 target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
     # Add user defined include paths
     Utils
+
 )
 
 # Add project symbols (macros)
@@ -75,9 +76,9 @@ target_compile_definitions(${CMAKE_PROJECT_NAME} PRIVATE
 target_link_libraries(${CMAKE_PROJECT_NAME}
     stm32cubemx
 
-    # Add user defined libraries
 )
 
 target_link_options(${CMAKE_PROJECT_NAME} PRIVATE
     -u _printf_float
+
 )
