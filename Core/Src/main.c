@@ -174,7 +174,7 @@ int main(void)
     if (update_attitude_flag)
     {
       Get_MahonyAngle(&Roll, &Pitch, &Yaw);
-      printf("Roll: %.2f, Pitch: %.2f, Yaw: %.2f,", Roll, Pitch, Yaw);
+      printf("Roll: %.2f, Pitch: %.2f, Yaw: %.2f\r\n", Roll, Pitch, Yaw);
       update_attitude_flag = 0;
     }
     // printf("ax:%.2f, ay:%.2f, az:%.2f,", AccelCorrected[0], AccelCorrected[1], AccelCorrected[2]);
