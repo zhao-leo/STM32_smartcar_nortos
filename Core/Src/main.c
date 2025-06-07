@@ -174,11 +174,11 @@ int main(void)
     if (update_attitude_flag)
     {
       Get_MahonyAngle(&Roll, &Pitch, &Yaw);
+      printf("Roll: %.2f, Pitch: %.2f, Yaw: %.2f,", Roll, Pitch, Yaw);
       update_attitude_flag = 0;
     }
-    printf("Roll: %.2f, Pitch: %.2f, Yaw: %.2f,", Roll, Pitch, Yaw);
-    printf("ax:%.2f, ay:%.2f, az:%.2f,", icm42688_acc_x, icm42688_acc_y, icm42688_acc_z);
-    printf("gx: %.2f, gy:%.2f,gz:%.2f\r\n", icm42688_gyro_x, icm42688_gyro_y, icm42688_gyro_z);
+    // printf("ax:%.2f, ay:%.2f, az:%.2f,", AccelCorrected[0], AccelCorrected[1], AccelCorrected[2]);
+    // printf("gx: %.2f, gy:%.2f,gz:%.2f\r\n", GyroCorrected[0], GyroCorrected[1], GyroCorrected[2]);
 
     // UART_ParsePIDCommand();
 
