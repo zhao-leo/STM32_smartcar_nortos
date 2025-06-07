@@ -56,8 +56,9 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     Utils/mpu6050.c
     Utils/encoder.c
     Utils/pid_control.c
-    Utils/ahrs_hal.c
-    Utils/icm42688_hal.c
+    Utils/icm42688.c
+    Utils/MahonyAHRS.c
+
 )
 
 # Add include paths

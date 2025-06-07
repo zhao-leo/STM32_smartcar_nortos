@@ -51,3 +51,5 @@ target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
 + ) 
 ```
 添加链接选项以支持浮点数打印
+
+# 元器件要外部供电！
