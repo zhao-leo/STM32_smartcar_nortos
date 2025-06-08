@@ -76,6 +76,7 @@ uint8_t serialBuf[100];
 
 MPU6050_t MPU6050;
 
+
 extern Encoder_TypeDef encoderA;
 extern Encoder_TypeDef encoderB;
 
@@ -176,7 +177,9 @@ int main(void)
     if (update_attitude_flag == 9)
     {
       MPU6050_Read_All(&hi2c1, &MPU6050);
-      printf("Roll: %.2f, Pitch: %.2f\r\n, Yaw:%.2f", MPU6050.KalmanAngleX, MPU6050.KalmanAngleY,MPU6050.YawAngle);
+      // printf("Roll: %.2f, Pitch: %.2f, Yaw:%.2f,", MPU6050.KalmanAngleX, MPU6050.KalmanAngleY,MPU6050.YawAngle);
+      // printf("%.2f,", MPU6050.YawAngle);
+      printf("%.2f,%.2f,", displacementCalculator.displacementX, displacementCalculator.displacementY);
       update_attitude_flag =0;
     }
 

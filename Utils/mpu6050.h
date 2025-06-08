@@ -13,6 +13,8 @@
 #include <stdint.h>
 #include "i2c.h"
 
+
+
 // MPU6050 structure
 typedef struct
 {
@@ -39,6 +41,11 @@ typedef struct
     float YawAngle;      // Z轴累计角度(偏航角)
     float YawDiff;       // 偏航角差值
     float PrevYawAngle;  // 上一次的偏航角
+
+    // 添加位移相关数据
+    float DisplacementX; // X轴位移
+    float DisplacementY; // Y轴位移
+
 } MPU6050_t;
 
 
@@ -65,6 +72,33 @@ typedef struct
     double P[2][2];
 } Kalman_t;
 
+typedef struct {
+    float accXFiltered;        // X轴滤波后的加速度
+    float accYFiltered;        // Y轴滤波后的加速度
+    float displacementX;       // X轴位移
+    float displacementY;       // Y轴位移
+    float velocityX;           // X轴速度
+    float velocityY;           // Y轴速度
+    float prevAccX;            // 上一次X轴加速度
+    float prevAccY;            // 上一次Y轴加速度
+    uint32_t lastTime;         // 上次更新时间
+    uint8_t isInitialized;     // 是否初始化
+    float noiseThreshold;      // 噪声阈值
+} DisplacementCalculator_t;
+
+// 在全局变量区域添加以下变量
+typedef struct {
+    float accXSum;               // 累积的X轴加速度值
+    float accYSum;               // 累积的Y轴加速度值
+    uint32_t sampleCount;        // 采样计数
+    float accXBias;              // 计算得到的X轴偏差
+    float accYBias;              // 计算得到的Y轴偏差
+    uint8_t calibrationDone;     // 标记是否完成校准
+} AccelCalibration_t;
+
+extern DisplacementCalculator_t displacementCalculator;
+
+
 uint8_t MPU6050_Init(I2C_HandleTypeDef *I2Cx);
 
 void MPU6050_Read_Accel(I2C_HandleTypeDef *I2Cx, MPU6050_t *DataStruct);
@@ -80,3 +114,9 @@ double Kalman_getAngle(Kalman_t *Kalman, double newAngle, double newRate, double
 void GyroIntegrator_Init(GyroIntegrator_t *integrator, float noiseThreshold);
 void GyroIntegrator_Update(GyroIntegrator_t *integrator, float gyroZ, uint8_t resetFlag);
 void MPU6050_Reset_YawAngle(MPU6050_t *DataStruct);
+
+
+void DisplacementCalculator_Init(DisplacementCalculator_t *calculator, float noiseThreshold);
+// 更新DisplacementCalculator_Update函数声明
+void DisplacementCalculator_Update(DisplacementCalculator_t *calculator, float accX, float accY, float accZ, float roll, float pitch, float yaw);
+void DisplacementCalculator_Reset(DisplacementCalculator_t *calculator);

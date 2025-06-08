@@ -33,6 +33,8 @@
 
 #include <math.h>
 #include "mpu6050.h"
+#include <stdio.h>
+#include <string.h>
 
 #define RAD_TO_DEG 57.295779513082320876798154814105
 
@@ -44,6 +46,9 @@
 #define TEMP_OUT_H_REG 0x41
 #define GYRO_CONFIG_REG 0x1B
 #define GYRO_XOUT_H_REG 0x43
+#ifndef M_PI
+#define M_PI 3.1415926536
+#endif
 
 // Setup MPU6050
 #define MPU6050_ADDR 0xD0
@@ -52,6 +57,8 @@ const double Accel_Z_corrector = 14418.0;
 
 // 在现有全局变量下方添加
 GyroIntegrator_t gyroIntegrator = {0};
+DisplacementCalculator_t displacementCalculator = {0};
+AccelCalibration_t accelCalibration = {0};
 
 uint32_t timer;
 
@@ -208,19 +215,39 @@ void MPU6050_Read_All(I2C_HandleTypeDef *I2Cx, MPU6050_t *DataStruct)
     if (fabs(DataStruct->KalmanAngleY) > 90)
         DataStruct->Gx = -DataStruct->Gx;
     DataStruct->KalmanAngleX = Kalman_getAngle(&KalmanX, roll, DataStruct->Gx, dt);
-    
+
     // 判断是否初始化了陀螺仪积分器
-    if (!gyroIntegrator.isInitialized) {
-        GyroIntegrator_Init(&gyroIntegrator, 0.5f);  // 设置0.5°/s的噪声阈值
+    if (!gyroIntegrator.isInitialized)
+    {
+        GyroIntegrator_Init(&gyroIntegrator, 0.5f); // 设置0.5°/s的噪声阈值
     }
-    
+
     // 更新Z轴角度(偏航角)
-    GyroIntegrator_Update(&gyroIntegrator, DataStruct->Gz, 0);  // 0表示不重置
-    
+    GyroIntegrator_Update(&gyroIntegrator, DataStruct->Gz, 0); // 0表示不重置
+
     // 更新结构体中的偏航角数据
-    DataStruct->PrevYawAngle = DataStruct->YawAngle; 
+    DataStruct->PrevYawAngle = DataStruct->YawAngle;
     DataStruct->YawAngle = gyroIntegrator.currentAngle;
     DataStruct->YawDiff = gyroIntegrator.angleDiff;
+
+    if (!displacementCalculator.isInitialized)
+    {
+        DisplacementCalculator_Init(&displacementCalculator, 0.1f); // 设置0.05g的噪声阈值
+    }
+
+    // 更新位移计算
+    // 注意：需要考虑姿态角对加速度的影响，可能需要将身体坐标系转换到地面坐标系
+    DisplacementCalculator_Update(&displacementCalculator,
+                                  DataStruct->Ax,
+                                  DataStruct->Ay,
+                                  DataStruct->Az,
+                                  DataStruct->KalmanAngleX, // 翻滚角roll
+                                  DataStruct->KalmanAngleY, // 俯仰角pitch
+                                  DataStruct->YawAngle);    // 偏航角yaw
+
+    // 更新结构体中的位移数据（如果需要）
+    DataStruct->DisplacementX = displacementCalculator.displacementX;
+    DataStruct->DisplacementY = displacementCalculator.displacementY;
 }
 
 double Kalman_getAngle(Kalman_t *Kalman, double newAngle, double newRate, double dt)
@@ -251,8 +278,7 @@ double Kalman_getAngle(Kalman_t *Kalman, double newAngle, double newRate, double
     Kalman->P[1][1] -= K[1] * P01_temp;
 
     return Kalman->angle;
-};
-
+}
 
 // 在现有函数之后添加
 void GyroIntegrator_Init(GyroIntegrator_t *integrator, float noiseThreshold)
@@ -266,16 +292,16 @@ void GyroIntegrator_Init(GyroIntegrator_t *integrator, float noiseThreshold)
     integrator->isInitialized = 1;
 }
 
-
 // 在GyroIntegrator_Init函数后添加
 void GyroIntegrator_Update(GyroIntegrator_t *integrator, float gyroZ, uint8_t resetFlag)
 {
     uint32_t currentTime;
     float dt;
-    float alpha = 0.8f;  // 低通滤波器系数
-    
+    float alpha = 0.8f; // 低通滤波器系数
+
     // 检查是否需要重置
-    if (resetFlag) {
+    if (resetFlag)
+    {
         integrator->currentAngle = 0.0f;
         integrator->previousAngle = 0.0f;
         integrator->angleDiff = 0.0f;
@@ -283,46 +309,53 @@ void GyroIntegrator_Update(GyroIntegrator_t *integrator, float gyroZ, uint8_t re
         integrator->lastTime = HAL_GetTick();
         return;
     }
-    
+
     // 计算时间间隔
     currentTime = HAL_GetTick();
-    dt = (float)(currentTime - integrator->lastTime) / 1000.0f;  // 转换为秒
+    dt = (float)(currentTime - integrator->lastTime) / 1000.0f; // 转换为秒
     integrator->lastTime = currentTime;
-    
+
     // 跳过过短或异常的时间间隔
-    if (dt <= 0.0f || dt > 0.5f) {
+    if (dt <= 0.0f || dt > 0.5f)
+    {
         return;
     }
-    
+
     // 低通滤波以去除噪声
     integrator->gyroZFiltered = alpha * integrator->gyroZFiltered + (1.0f - alpha) * gyroZ;
-    
+
     // 应用噪声阈值
-    if (fabs(integrator->gyroZFiltered) < integrator->noiseThreshold) {
+    if (fabs(integrator->gyroZFiltered) < integrator->noiseThreshold)
+    {
         integrator->gyroZFiltered = 0.0f;
     }
-    
+
     // 保存上一次角度
     integrator->previousAngle = integrator->currentAngle;
-    
+
     // 积分计算角度变化
     integrator->currentAngle += integrator->gyroZFiltered * dt;
-    
+
     // 确保角度在0-360度范围内
-    while (integrator->currentAngle >= 360.0f) {
+    while (integrator->currentAngle >= 360.0f)
+    {
         integrator->currentAngle -= 360.0f;
     }
-    while (integrator->currentAngle < 0.0f) {
+    while (integrator->currentAngle < 0.0f)
+    {
         integrator->currentAngle += 360.0f;
     }
-    
+
     // 计算角度差值
     integrator->angleDiff = integrator->currentAngle - integrator->previousAngle;
-    
+
     // 处理角度跨越0/360度边界的情况
-    if (integrator->angleDiff > 180.0f) {
+    if (integrator->angleDiff > 180.0f)
+    {
         integrator->angleDiff -= 360.0f;
-    } else if (integrator->angleDiff < -180.0f) {
+    }
+    else if (integrator->angleDiff < -180.0f)
+    {
         integrator->angleDiff += 360.0f;
     }
 }
@@ -331,10 +364,165 @@ void GyroIntegrator_Update(GyroIntegrator_t *integrator, float gyroZ, uint8_t re
 void MPU6050_Reset_YawAngle(MPU6050_t *DataStruct)
 {
     // 重置积分器
-    GyroIntegrator_Update(&gyroIntegrator, 0.0f, 1);  // 1表示重置
-    
+    GyroIntegrator_Update(&gyroIntegrator, 0.0f, 1); // 1表示重置
+
     // 重置结构体中的偏航角数据
     DataStruct->YawAngle = 0.0f;
     DataStruct->PrevYawAngle = 0.0f;
     DataStruct->YawDiff = 0.0f;
+}
+
+void DisplacementCalculator_Init(DisplacementCalculator_t *calculator, float noiseThreshold)
+{
+    calculator->accXFiltered = 0.0f;
+    calculator->accYFiltered = 0.0f;
+    calculator->displacementX = 0.0f;
+    calculator->displacementY = 0.0f;
+    calculator->velocityX = 0.0f;
+    calculator->velocityY = 0.0f;
+    calculator->prevAccX = 0.0f;
+    calculator->prevAccY = 0.0f;
+    calculator->lastTime = HAL_GetTick();
+    calculator->isInitialized = 1;
+    calculator->noiseThreshold = noiseThreshold;
+
+    // 初始化校准数据
+    accelCalibration.accXSum = 0.0f;
+    accelCalibration.accYSum = 0.0f;
+    accelCalibration.sampleCount = 0;
+    accelCalibration.accXBias = 0.0f;
+    accelCalibration.accYBias = 0.0f;
+    accelCalibration.calibrationDone = 0;
+}
+
+void DisplacementCalculator_Update(DisplacementCalculator_t *calculator, float accX, float accY, float accZ, float roll, float pitch, float yaw)
+{
+    uint32_t currentTime;
+    float dt;
+    float accX_world, accY_world; // 绝对坐标系中的加速度
+
+    // 计算时间间隔
+    currentTime = HAL_GetTick();
+    dt = (float)(currentTime - calculator->lastTime) / 1000.0f; // 转换为秒
+    calculator->lastTime = currentTime;
+
+    // 跳过过短或异常的时间间隔
+    if (dt <= 0.0f || dt > 0.5f)
+    {
+        return;
+    }
+
+    // 第1步：补偿重力影响
+    // 将roll(翻滚角)和pitch(俯仰角)转换为弧度
+    float roll_rad = roll * M_PI / 180.0f;
+    float pitch_rad = pitch * M_PI / 180.0f;
+
+    // 重力加速度在各轴的分量 (9.81 m/s^2)
+    float g = 9.80f;
+
+    // 计算重力在传感器X、Y轴上的分量并减去
+    float grav_x = g * sin(pitch_rad);                  // 俯仰角导致的X轴重力分量
+    float grav_y = -g * sin(roll_rad) * cos(pitch_rad); // 翻滚角导致的Y轴重力分量
+
+    // 减去重力影响得到真实加速度
+    accX -= grav_x;
+    accY -= grav_y;
+
+    // 第2步：从传感器坐标系转换到世界坐标系
+    // 将yaw(偏航角)转换为弧度
+    float yaw_rad = yaw * M_PI / 180.0f;
+
+    // 坐标系旋转变换，考虑偏航角影响
+    accX_world = accX * cos(yaw_rad) - accY * sin(yaw_rad);
+    accY_world = accX * sin(yaw_rad) + accY * cos(yaw_rad);
+
+    // 低通滤波去除高频噪声
+    // calculator->accXFiltered = alpha * calculator->accXFiltered + (1.0f - alpha) * accX_world;
+    // calculator->accYFiltered = alpha * calculator->accYFiltered + (1.0f - alpha) * accY_world;
+    if (accelCalibration.calibrationDone == 0)
+    {
+        accelCalibration.sampleCount++;
+    }
+    // 校准处理
+    if (accelCalibration.sampleCount <= 1200 && accelCalibration.sampleCount >= 800)
+    {
+        // 校准阶段：累加过滤后的加速度值
+        accelCalibration.accXSum += accX_world;
+        accelCalibration.accYSum += accY_world;
+
+        // 当达到2000次采样时，计算平均偏差
+        if (accelCalibration.sampleCount == 1200)
+        {
+            accelCalibration.accXBias = accelCalibration.accXSum / 400.0f;
+            accelCalibration.accYBias = accelCalibration.accYSum / 400.0f;
+            accelCalibration.calibrationDone = 1;
+            accelCalibration.sampleCount++;
+
+            // 重置速度和位移，确保从零开始正确计算
+            calculator->velocityX = 0.0f;
+            calculator->velocityY = 0.0f;
+            calculator->displacementX = 0.0f;
+            calculator->displacementY = 0.0f;
+        }
+
+        // 校准阶段只计算和记录数据，不进行后续的速度和位移计算
+        return;
+    }
+
+    // 校准完成后，从过滤后的加速度中减去偏差
+    float compensatedAccX = accX_world - accelCalibration.accXBias;
+    float compensatedAccY = accY_world - accelCalibration.accYBias;
+    // 添加低通滤波器来去除高频噪声分量
+    // alpha值越大，滤波效果越强，但响应越慢；alpha值越小，响应越快，但滤波效果越弱
+    float aalpha = 0.85f; // 可以根据实际情况调整，范围0-1
+    static float filteredAccX = 0.0f;
+    static float filteredAccY = 0.0f;
+
+    // 应用低通滤波器
+    filteredAccX = aalpha * filteredAccX + (1.0f - aalpha) * compensatedAccX;
+    filteredAccY = aalpha * filteredAccY + (1.0f - aalpha) * compensatedAccY;
+
+    // 使用滤波后的加速度代替原始补偿加速度
+    compensatedAccX = filteredAccX;
+    compensatedAccY = filteredAccY;
+    printf("%.2f,%.2f\r\n",
+           compensatedAccX, compensatedAccY);
+
+    if (fabs(compensatedAccX) < calculator->noiseThreshold)
+    {
+        compensatedAccX = 0.0f;
+    }
+    if (fabs(compensatedAccY) < calculator->noiseThreshold)
+    {
+        compensatedAccY = 0.0f;
+    }
+
+    // 加速度积分得到速度 (梯形法则)
+    calculator->velocityX += (compensatedAccX + calculator->prevAccX) * dt / 2.0f;
+    calculator->velocityY += (compensatedAccY + calculator->prevAccY) * dt / 2.0f;
+
+    // 速度积分得到位移
+    calculator->displacementX += calculator->velocityX * dt;
+    calculator->displacementY += calculator->velocityY * dt;
+
+    // 保存当前补偿后加速度用于下次计算
+    calculator->prevAccX = compensatedAccX;
+    calculator->prevAccY = compensatedAccY;
+
+    // 轻微的速度衰减，防止小误差累积导致速度持续增长
+    calculator->velocityX *= 0.995f;
+    calculator->velocityY *= 0.995f;
+}
+
+void DisplacementCalculator_Reset(DisplacementCalculator_t *calculator)
+{
+    calculator->accXFiltered = 0.0f;
+    calculator->accYFiltered = 0.0f;
+    calculator->displacementX = 0.0f;
+    calculator->displacementY = 0.0f;
+    calculator->velocityX = 0.0f;
+    calculator->velocityY = 0.0f;
+    calculator->prevAccX = 0.0f;
+    calculator->prevAccY = 0.0f;
+    calculator->lastTime = HAL_GetTick();
 }
