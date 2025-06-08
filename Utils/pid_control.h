@@ -32,13 +32,13 @@ typedef struct {
 
 /* PID控制器参数（可调整） */
 // 为电机A和B分别定义PID参数
-#define PID_KP_A         0.282f     // 电机A比例系数默认值
-#define PID_KI_A         0.026f     // 电机A积分系数默认值
-#define PID_KD_A         0.038f     // 电机A微分系数默认值
+#define PID_KP_A         0.9f     // 电机A比例系数默认值
+#define PID_KI_A         0.45f     // 电机A积分系数默认值
+#define PID_KD_A         0.6f     // 电机A微分系数默认值
 
-#define PID_KP_B         3.0f     // 电机B比例系数默认值
-#define PID_KI_B         0.5f     // 电机B积分系数默认值
-#define PID_KD_B         0.2f     // 电机B微分系数默认值
+#define PID_KP_B         2.0f     // 电机B比例系数默认值
+#define PID_KI_B         1.4f     // 电机B积分系数默认值
+#define PID_KD_B         1.0f     // 电机B微分系数默认值
 #define PID_OUTPUT_MAX  999.0f   // 输出最大值（对应PWM最大值）
 #define PID_OUTPUT_MIN  0.0f     // 输出最小值
 #define PID_SAMPLE_TIME 100.0f   // PID采样时间(ms)，应与编码器采样时间一致

@@ -76,11 +76,11 @@ typedef struct {
     float accXFiltered;        // X轴滤波后的加速度
     float accYFiltered;        // Y轴滤波后的加速度
     float displacementX;       // X轴位移
-    float displacementY;       // Y轴位移
+    // float displacementY;       // Y轴位移
     float velocityX;           // X轴速度
-    float velocityY;           // Y轴速度
+    // float velocityY;           // Y轴速度
     float prevAccX;            // 上一次X轴加速度
-    float prevAccY;            // 上一次Y轴加速度
+    // float prevAccY;            // 上一次Y轴加速度
     uint32_t lastTime;         // 上次更新时间
     uint8_t isInitialized;     // 是否初始化
     float noiseThreshold;      // 噪声阈值
@@ -94,6 +94,7 @@ typedef struct {
     float accXBias;              // 计算得到的X轴偏差
     float accYBias;              // 计算得到的Y轴偏差
     uint8_t calibrationDone;     // 标记是否完成校准
+    float g_real;                // 实际重力加速度
 } AccelCalibration_t;
 
 extern DisplacementCalculator_t displacementCalculator;

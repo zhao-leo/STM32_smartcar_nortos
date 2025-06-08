@@ -232,7 +232,7 @@ void MPU6050_Read_All(I2C_HandleTypeDef *I2Cx, MPU6050_t *DataStruct)
 
     if (!displacementCalculator.isInitialized)
     {
-        DisplacementCalculator_Init(&displacementCalculator, 0.1f); // 设置0.05g的噪声阈值
+        DisplacementCalculator_Init(&displacementCalculator, 0.04f); // 设置0.05g的噪声阈值
     }
 
     // 更新位移计算
@@ -247,7 +247,7 @@ void MPU6050_Read_All(I2C_HandleTypeDef *I2Cx, MPU6050_t *DataStruct)
 
     // 更新结构体中的位移数据（如果需要）
     DataStruct->DisplacementX = displacementCalculator.displacementX;
-    DataStruct->DisplacementY = displacementCalculator.displacementY;
+    // DataStruct->DisplacementY = displacementCalculator.displacementY;
 }
 
 double Kalman_getAngle(Kalman_t *Kalman, double newAngle, double newRate, double dt)
@@ -377,11 +377,11 @@ void DisplacementCalculator_Init(DisplacementCalculator_t *calculator, float noi
     calculator->accXFiltered = 0.0f;
     calculator->accYFiltered = 0.0f;
     calculator->displacementX = 0.0f;
-    calculator->displacementY = 0.0f;
+    // calculator->displacementY = 0.0f;
     calculator->velocityX = 0.0f;
-    calculator->velocityY = 0.0f;
+    // calculator->velocityY = 0.0f;
     calculator->prevAccX = 0.0f;
-    calculator->prevAccY = 0.0f;
+    // calculator->prevAccY = 0.0f;
     calculator->lastTime = HAL_GetTick();
     calculator->isInitialized = 1;
     calculator->noiseThreshold = noiseThreshold;
@@ -394,12 +394,12 @@ void DisplacementCalculator_Init(DisplacementCalculator_t *calculator, float noi
     accelCalibration.accYBias = 0.0f;
     accelCalibration.calibrationDone = 0;
 }
-
+#define STEP 50
 void DisplacementCalculator_Update(DisplacementCalculator_t *calculator, float accX, float accY, float accZ, float roll, float pitch, float yaw)
 {
     uint32_t currentTime;
     float dt;
-    float accX_world, accY_world; // 绝对坐标系中的加速度
+    float accX_real;
 
     // 计算时间间隔
     currentTime = HAL_GetTick();
@@ -411,107 +411,100 @@ void DisplacementCalculator_Update(DisplacementCalculator_t *calculator, float a
     {
         return;
     }
+    // Initialization g_calculated and Bias
+    if (accelCalibration.calibrationDone == 0)
+    {
+        // 计算重力加速度
+        if (accelCalibration.sampleCount == 600)
+        {
+            accelCalibration.g_real = sqrt(accX * accX + accY * accY + accZ * accZ);
+        }
 
-    // 第1步：补偿重力影响
-    // 将roll(翻滚角)和pitch(俯仰角)转换为弧度
+        // add ticks
+        accelCalibration.sampleCount++;
+    }
+
+    // 1. 将roll(翻滚角)、pitch(俯仰角)和yaw(偏航角)转换为弧度
     float roll_rad = roll * M_PI / 180.0f;
     float pitch_rad = pitch * M_PI / 180.0f;
-
-    // 重力加速度在各轴的分量 (9.81 m/s^2)
-    float g = 9.80f;
-
-    // 计算重力在传感器X、Y轴上的分量并减去
-    float grav_x = g * sin(pitch_rad);                  // 俯仰角导致的X轴重力分量
-    float grav_y = -g * sin(roll_rad) * cos(pitch_rad); // 翻滚角导致的Y轴重力分量
-
-    // 减去重力影响得到真实加速度
-    accX -= grav_x;
-    accY -= grav_y;
-
-    // 第2步：从传感器坐标系转换到世界坐标系
-    // 将yaw(偏航角)转换为弧度
     float yaw_rad = yaw * M_PI / 180.0f;
 
-    // 坐标系旋转变换，考虑偏航角影响
-    accX_world = accX * cos(yaw_rad) - accY * sin(yaw_rad);
-    accY_world = accX * sin(yaw_rad) + accY * cos(yaw_rad);
-
+    // 2. 将传感器坐标系下的加速度转换到重力坐标系下，但保持x轴与传感器前方一致
+    // 首先，补偿俯仰和翻滚对加速度的影响
+    accX_real = accX - accelCalibration.g_real * sin(pitch_rad);
+    // float accY_noRollPitch = accX * sin(roll_rad) * sin(pitch_rad) + accY * cos(roll_rad) - accZ * sin(roll_rad) * cos(pitch_rad);
+    
     // 低通滤波去除高频噪声
     // calculator->accXFiltered = alpha * calculator->accXFiltered + (1.0f - alpha) * accX_world;
     // calculator->accYFiltered = alpha * calculator->accYFiltered + (1.0f - alpha) * accY_world;
-    if (accelCalibration.calibrationDone == 0)
-    {
-        accelCalibration.sampleCount++;
-    }
-    // 校准处理
     if (accelCalibration.sampleCount <= 1200 && accelCalibration.sampleCount >= 800)
     {
+        const float n = 400 / STEP + 1.0f; // 计算滤波系数
         // 校准阶段：累加过滤后的加速度值
-        accelCalibration.accXSum += accX_world;
-        accelCalibration.accYSum += accY_world;
+        if (accelCalibration.sampleCount % STEP == 0)
+        {
+            accelCalibration.accXSum += accX_real;
+            // accelCalibration.accYSum += accY_world;
+        }
 
         // 当达到2000次采样时，计算平均偏差
         if (accelCalibration.sampleCount == 1200)
         {
-            accelCalibration.accXBias = accelCalibration.accXSum / 400.0f;
-            accelCalibration.accYBias = accelCalibration.accYSum / 400.0f;
+            accelCalibration.accXBias = accelCalibration.accXSum / n;
+            // accelCalibration.accYBias = accelCalibration.accYSum / n;
             accelCalibration.calibrationDone = 1;
             accelCalibration.sampleCount++;
 
             // 重置速度和位移，确保从零开始正确计算
             calculator->velocityX = 0.0f;
-            calculator->velocityY = 0.0f;
+            // calculator->velocityY = 0.0f;
             calculator->displacementX = 0.0f;
-            calculator->displacementY = 0.0f;
+            // calculator->displacementY = 0.0f;
         }
-
-        // 校准阶段只计算和记录数据，不进行后续的速度和位移计算
-        return;
     }
 
     // 校准完成后，从过滤后的加速度中减去偏差
-    float compensatedAccX = accX_world - accelCalibration.accXBias;
-    float compensatedAccY = accY_world - accelCalibration.accYBias;
+    float compensatedAccX = accX_real - accelCalibration.accXBias;
+    // float compensatedAccY = accY_real - accelCalibration.accYBias;
     // 添加低通滤波器来去除高频噪声分量
     // alpha值越大，滤波效果越强，但响应越慢；alpha值越小，响应越快，但滤波效果越弱
-    float aalpha = 0.85f; // 可以根据实际情况调整，范围0-1
+    float aalpha = 0.50f; // 可以根据实际情况调整，范围0-1
     static float filteredAccX = 0.0f;
-    static float filteredAccY = 0.0f;
 
     // 应用低通滤波器
     filteredAccX = aalpha * filteredAccX + (1.0f - aalpha) * compensatedAccX;
-    filteredAccY = aalpha * filteredAccY + (1.0f - aalpha) * compensatedAccY;
+    // filteredAccY = aalpha * filteredAccY + (1.0f - aalpha) * compensatedAccY;
 
     // 使用滤波后的加速度代替原始补偿加速度
     compensatedAccX = filteredAccX;
-    compensatedAccY = filteredAccY;
-    printf("%.2f,%.2f\r\n",
-           compensatedAccX, compensatedAccY);
+    // compensatedAccY = filteredAccY;
+    // printf("%.2f\r\n",
+    //        compensatedAccX);
 
     if (fabs(compensatedAccX) < calculator->noiseThreshold)
     {
         compensatedAccX = 0.0f;
     }
-    if (fabs(compensatedAccY) < calculator->noiseThreshold)
-    {
-        compensatedAccY = 0.0f;
-    }
+    // if (fabs(compensatedAccY) < calculator->noiseThreshold)
+    // {
+    //     compensatedAccY = 0.0f;
+    // }
 
     // 加速度积分得到速度 (梯形法则)
     calculator->velocityX += (compensatedAccX + calculator->prevAccX) * dt / 2.0f;
-    calculator->velocityY += (compensatedAccY + calculator->prevAccY) * dt / 2.0f;
+    // calculator->velocityY += (compensatedAccY + calculator->prevAccY) * dt / 2.0f;
 
     // 速度积分得到位移
     calculator->displacementX += calculator->velocityX * dt;
-    calculator->displacementY += calculator->velocityY * dt;
+    // calculator->displacementY += calculator->velocityY * dt;
 
     // 保存当前补偿后加速度用于下次计算
     calculator->prevAccX = compensatedAccX;
-    calculator->prevAccY = compensatedAccY;
-
+    // calculator->prevAccY = compensatedAccY;
+    printf("%.2f,%.2f\r\n", calculator->velocityX,calculator->displacementX);
     // 轻微的速度衰减，防止小误差累积导致速度持续增长
     calculator->velocityX *= 0.995f;
-    calculator->velocityY *= 0.995f;
+    // calculator->velocityY *= 0.995f;
 }
 
 void DisplacementCalculator_Reset(DisplacementCalculator_t *calculator)
@@ -519,10 +512,10 @@ void DisplacementCalculator_Reset(DisplacementCalculator_t *calculator)
     calculator->accXFiltered = 0.0f;
     calculator->accYFiltered = 0.0f;
     calculator->displacementX = 0.0f;
-    calculator->displacementY = 0.0f;
+    // calculator->displacementY = 0.0f;
     calculator->velocityX = 0.0f;
-    calculator->velocityY = 0.0f;
+    // calculator->velocityY = 0.0f;
     calculator->prevAccX = 0.0f;
-    calculator->prevAccY = 0.0f;
+    // calculator->prevAccY = 0.0f;
     calculator->lastTime = HAL_GetTick();
 }
