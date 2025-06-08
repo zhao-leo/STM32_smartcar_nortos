@@ -50,6 +50,9 @@
 const uint16_t i2c_timeout = 100;
 const double Accel_Z_corrector = 14418.0;
 
+// 在现有全局变量下方添加
+GyroIntegrator_t gyroIntegrator = {0};
+
 uint32_t timer;
 
 Kalman_t KalmanX = {
@@ -205,6 +208,19 @@ void MPU6050_Read_All(I2C_HandleTypeDef *I2Cx, MPU6050_t *DataStruct)
     if (fabs(DataStruct->KalmanAngleY) > 90)
         DataStruct->Gx = -DataStruct->Gx;
     DataStruct->KalmanAngleX = Kalman_getAngle(&KalmanX, roll, DataStruct->Gx, dt);
+    
+    // 判断是否初始化了陀螺仪积分器
+    if (!gyroIntegrator.isInitialized) {
+        GyroIntegrator_Init(&gyroIntegrator, 0.5f);  // 设置0.5°/s的噪声阈值
+    }
+    
+    // 更新Z轴角度(偏航角)
+    GyroIntegrator_Update(&gyroIntegrator, DataStruct->Gz, 0);  // 0表示不重置
+    
+    // 更新结构体中的偏航角数据
+    DataStruct->PrevYawAngle = DataStruct->YawAngle; 
+    DataStruct->YawAngle = gyroIntegrator.currentAngle;
+    DataStruct->YawDiff = gyroIntegrator.angleDiff;
 }
 
 double Kalman_getAngle(Kalman_t *Kalman, double newAngle, double newRate, double dt)
@@ -236,3 +252,89 @@ double Kalman_getAngle(Kalman_t *Kalman, double newAngle, double newRate, double
 
     return Kalman->angle;
 };
+
+
+// 在现有函数之后添加
+void GyroIntegrator_Init(GyroIntegrator_t *integrator, float noiseThreshold)
+{
+    integrator->currentAngle = 0.0f;
+    integrator->previousAngle = 0.0f;
+    integrator->angleDiff = 0.0f;
+    integrator->gyroZFiltered = 0.0f;
+    integrator->noiseThreshold = noiseThreshold;
+    integrator->lastTime = HAL_GetTick();
+    integrator->isInitialized = 1;
+}
+
+
+// 在GyroIntegrator_Init函数后添加
+void GyroIntegrator_Update(GyroIntegrator_t *integrator, float gyroZ, uint8_t resetFlag)
+{
+    uint32_t currentTime;
+    float dt;
+    float alpha = 0.8f;  // 低通滤波器系数
+    
+    // 检查是否需要重置
+    if (resetFlag) {
+        integrator->currentAngle = 0.0f;
+        integrator->previousAngle = 0.0f;
+        integrator->angleDiff = 0.0f;
+        integrator->gyroZFiltered = 0.0f;
+        integrator->lastTime = HAL_GetTick();
+        return;
+    }
+    
+    // 计算时间间隔
+    currentTime = HAL_GetTick();
+    dt = (float)(currentTime - integrator->lastTime) / 1000.0f;  // 转换为秒
+    integrator->lastTime = currentTime;
+    
+    // 跳过过短或异常的时间间隔
+    if (dt <= 0.0f || dt > 0.5f) {
+        return;
+    }
+    
+    // 低通滤波以去除噪声
+    integrator->gyroZFiltered = alpha * integrator->gyroZFiltered + (1.0f - alpha) * gyroZ;
+    
+    // 应用噪声阈值
+    if (fabs(integrator->gyroZFiltered) < integrator->noiseThreshold) {
+        integrator->gyroZFiltered = 0.0f;
+    }
+    
+    // 保存上一次角度
+    integrator->previousAngle = integrator->currentAngle;
+    
+    // 积分计算角度变化
+    integrator->currentAngle += integrator->gyroZFiltered * dt;
+    
+    // 确保角度在0-360度范围内
+    while (integrator->currentAngle >= 360.0f) {
+        integrator->currentAngle -= 360.0f;
+    }
+    while (integrator->currentAngle < 0.0f) {
+        integrator->currentAngle += 360.0f;
+    }
+    
+    // 计算角度差值
+    integrator->angleDiff = integrator->currentAngle - integrator->previousAngle;
+    
+    // 处理角度跨越0/360度边界的情况
+    if (integrator->angleDiff > 180.0f) {
+        integrator->angleDiff -= 360.0f;
+    } else if (integrator->angleDiff < -180.0f) {
+        integrator->angleDiff += 360.0f;
+    }
+}
+
+// 在GyroIntegrator_Update函数后添加
+void MPU6050_Reset_YawAngle(MPU6050_t *DataStruct)
+{
+    // 重置积分器
+    GyroIntegrator_Update(&gyroIntegrator, 0.0f, 1);  // 1表示重置
+    
+    // 重置结构体中的偏航角数据
+    DataStruct->YawAngle = 0.0f;
+    DataStruct->PrevYawAngle = 0.0f;
+    DataStruct->YawDiff = 0.0f;
+}

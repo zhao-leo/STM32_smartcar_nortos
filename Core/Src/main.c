@@ -18,6 +18,7 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include "dma.h"
 #include "i2c.h"
 #include "spi.h"
 #include "tim.h"
@@ -36,8 +37,8 @@
 #include "motor.h"
 #include "encoder.h"
 #include "pid_control.h"
-#include "MahonyAHRS.h"
-#include "icm42688.h"
+
+
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -63,14 +64,17 @@ MPU6050_t MPU6050;
 
 PS2Mouse_Data_t mouseData;
 
-// 显示用变�???????????????
+// 显示用变�?????????????????
 int16_t displayValue_x = 0;
 int16_t displayValue_y = 0;
 int16_t times = 0;
 int16_t sampleing = 0;
 float Roll, Pitch, Yaw;
+
 volatile uint8_t update_attitude_flag = 0;
 uint8_t serialBuf[100];
+
+MPU6050_t MPU6050;
 
 extern Encoder_TypeDef encoderA;
 extern Encoder_TypeDef encoderB;
@@ -117,6 +121,7 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
+  MX_DMA_Init();
   MX_USART3_UART_Init();
   MX_I2C1_Init();
   MX_TIM2_Init();
@@ -135,8 +140,8 @@ int main(void)
   // PS2Mouse_SetScaling2To1();
   // printf("系统已启动，串口配置完成！\r\n");
   // HAL_Delay(500);
-  // while (MPU6050_Init(&hi2c1) == 1)
-  //   ;
+  while (MPU6050_Init(&hi2c1) == 1)
+    ;
   // ssd1306_Init();
   // ssd1306_Fill(White);
   // ssd1306_UpdateScreen();
@@ -147,21 +152,19 @@ int main(void)
   // ssd1306_SetCursor(0, 0);
   // ssd1306_WriteString("Mouse Data:", Font_7x10, White);
   // ssd1306_UpdateScreen();
-  printf("start init\r\n");
-  HAL_Delay(10);
-  Icm42688_Init();
-  HAL_Delay(10);
-  Mahony_Init(1000);
+
   HAL_TIM_Base_Start_IT(&htim2);
-  // HAL_TIM_Encoder_Start(&htim1, TIM_CHANNEL_1);
-  // HAL_TIM_Encoder_Start(&htim1, TIM_CHANNEL_2);
-  // HAL_TIM_Encoder_Start(&htim3, TIM_CHANNEL_1);
-  // HAL_TIM_Encoder_Start(&htim3, TIM_CHANNEL_2);
-  // Motor_Init();
-  // Encoder_Init();
-  // PID_Init(&pid_motor_a);
-  // PID_SetSpeed(PID_MOTOR_A, 120);
-  // PID_Init(&pid_motor_b);
+
+  HAL_TIM_Encoder_Start(&htim1, TIM_CHANNEL_1);
+  HAL_TIM_Encoder_Start(&htim1, TIM_CHANNEL_2);
+  HAL_TIM_Encoder_Start(&htim3, TIM_CHANNEL_1);
+  HAL_TIM_Encoder_Start(&htim3, TIM_CHANNEL_2);
+  Motor_Init();
+  Encoder_Init();
+  PID_Init(&pid_motor_a);
+  PID_SetSpeed(PID_MOTOR_A, 120);
+  PID_Init(&pid_motor_b);
+
   HAL_Delay(10);
 
   /* USER CODE END 2 */
@@ -170,15 +173,12 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-
-    if (update_attitude_flag)
+    if (update_attitude_flag == 9)
     {
-      Get_MahonyAngle(&Roll, &Pitch, &Yaw);
-      printf("Roll: %.2f, Pitch: %.2f, Yaw: %.2f\r\n", Roll, Pitch, Yaw);
-      update_attitude_flag = 0;
+      MPU6050_Read_All(&hi2c1, &MPU6050);
+      printf("Roll: %.2f, Pitch: %.2f\r\n, Yaw:%.2f", MPU6050.KalmanAngleX, MPU6050.KalmanAngleY,MPU6050.YawAngle);
+      update_attitude_flag =0;
     }
-    // printf("ax:%.2f, ay:%.2f, az:%.2f,", AccelCorrected[0], AccelCorrected[1], AccelCorrected[2]);
-    // printf("gx: %.2f, gy:%.2f,gz:%.2f\r\n", GyroCorrected[0], GyroCorrected[1], GyroCorrected[2]);
 
     // UART_ParsePIDCommand();
 
@@ -186,11 +186,11 @@ int main(void)
     // 读取鼠标数据
     // if (PS2Mouse_ReadData(&mouseData))
     // {
-    //   // 更新显示�???????????????
+    //   // 更新显示�?????????????????
     //   displayValue_x += mouseData.x;
     //   displayValue_y += mouseData.y;
 
-    //   // 限制范围�???????????????0-100
+    //   // 限制范围�?????????????????0-100
     //   if (displayValue_x > 9999)
     //     displayValue_x = 0;
     //   if (displayValue_x < -9999)
@@ -199,7 +199,7 @@ int main(void)
     //     displayValue_y = 0;
     //   if (displayValue_y < -9999)
     //     displayValue_y = 0;
-    // 在OLED上显示鼠标数�???????????????
+    // 在OLED上显示鼠标数�?????????????????
 
     // char x_str[16]= {0};
     // char y_str[16]= {0};
@@ -310,9 +310,8 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
     //  else {
     //   times++;
     //  }
-    if (update_attitude_flag == 0)
-    {
-      update_attitude_flag = 1;
+    if(update_attitude_flag<9){
+    update_attitude_flag ++;
     }
   }
 }

@@ -1,4 +1,3 @@
-
 // Date			Author			Notes
 // 29/09/2011	SOH Madgwick    Initial release
 // 02/10/2011	SOH Madgwick	Optimised for reduced CPU load
@@ -28,8 +27,8 @@ static float invSqrt(float x)  // if use other platform please use float Mahony_
 }
 
 
-#define twoKpDef	(2.0f * 0.5f)	// 2 * proportional gain
-#define twoKiDef	(2.0f * 0.0f)	// 2 * integral gain
+#define twoKpDef	(2.0f * 1.0f)	// 增加比例增益到1.0
+#define twoKiDef	(2.0f * 0.01f)	// 增加积分增益到0.01
 void Mahony_Init(float sampleFrequency)
 {
 	twoKi = twoKiDef;	// 2 * integral gain (Ki)
@@ -42,6 +41,18 @@ void Mahony_Init(float sampleFrequency)
 	integralFBz = 0.0f;
 	anglesComputed = 0;
 	invSampleFreq = 1.0f / sampleFrequency;
+}
+
+void Mahony_reset(void)
+{
+    q0 = 1.0f;
+    q1 = 0.0f;
+    q2 = 0.0f;
+    q3 = 0.0f;
+    integralFBx = 0.0f;
+    integralFBy = 0.0f;
+    integralFBz = 0.0f;
+    anglesComputed = 0;
 }
 
 
@@ -296,13 +307,25 @@ void MahonyAHRSupdateIMU(float gx, float gy, float gz, float ax, float ay, float
 
 void Mahony_computeAngles()
 {
-	roll_mahony=atan2f(q0*q1 + q2*q3, 0.5f - q1*q1 - q2*q2);
-	roll_mahony *= 57.29578f;  
-	pitch_mahony =57.29578f * asinf(-2.0f * (q1*q3 - q0*q2));
-	yaw_mahony=atan2f(q1*q2 + q0*q3, 0.5f - q2*q2 - q3*q3); 
-	yaw_mahony *=57.29578f;
-	anglesComputed = 1;
+    // 使用更稳定的角度计算公式
+    roll_mahony = atan2f(2.0f * (q0*q1 + q2*q3), 1.0f - 2.0f * (q1*q1 + q2*q2));
+    roll_mahony *= 57.29578f;  
+    
+    // 限制pitch角度范围
+    float sin_pitch = 2.0f * (q0*q2 - q3*q1);
+    if(sin_pitch >= 1.0f)
+        pitch_mahony = 90.0f;
+    else if(sin_pitch <= -1.0f)
+        pitch_mahony = -90.0f;
+    else
+        pitch_mahony = asinf(sin_pitch) * 57.29578f;
+    
+    yaw_mahony = atan2f(2.0f * (q0*q3 + q1*q2), 1.0f - 2.0f * (q2*q2 + q3*q3)); 
+    yaw_mahony *= 57.29578f;
+    
+    anglesComputed = 1;
 }
+
 float getRoll() {
 	if (!anglesComputed) Mahony_computeAngles();
 	return roll_mahony;
@@ -314,6 +337,20 @@ float getPitch() {
 float getYaw() {
 	if (!anglesComputed) Mahony_computeAngles();
 	return yaw_mahony;
+}
+float getRollRadians() {
+    if (!anglesComputed) Mahony_computeAngles();
+    return roll_mahony * 0.0174533f;
+}
+
+float getPitchRadians() {
+    if (!anglesComputed) Mahony_computeAngles();
+    return pitch_mahony * 0.0174533f;
+}
+
+float getYawRadians() {
+    if (!anglesComputed) Mahony_computeAngles();
+    return yaw_mahony * 0.0174533f;
 }
 //============================================================================================
 // END OF CODE

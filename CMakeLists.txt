@@ -58,6 +58,8 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     Utils/pid_control.c
     Utils/icm42688.c
     Utils/MahonyAHRS.c
+    Utils/ICM20948.c
+
 
 )
 

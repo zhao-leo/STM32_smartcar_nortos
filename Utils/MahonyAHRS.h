@@ -17,6 +17,7 @@ void Mahony_Init(float sampleFrequency);
 void MahonyAHRSupdateIMU(float gx, float gy, float gz, float ax, float ay, float az);
 void Mahony_computeAngles(void);
 void MahonyAHRSinit(float ax, float ay, float az, float mx, float my, float mz);
+void Mahony_reset(void); // 添加重置函数
 float getRoll(void);
 float getPitch(void);
 float getYaw(void);
@@ -25,4 +26,5 @@ float getPitchRadians(void);
 float getYawRadians(void);
 
 extern float roll_mahony, pitch_mahony, yaw_mahony;
+extern float q0, q1, q2, q3; // 暴露四元数用于调试
 #endif

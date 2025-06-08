@@ -69,6 +69,8 @@ void Error_Handler(void);
 #define EncoderA_1_GPIO_Port GPIOA
 #define EncoderA_2_Pin GPIO_PIN_7
 #define EncoderA_2_GPIO_Port GPIOA
+#define SPI_CS_Pin GPIO_PIN_12
+#define SPI_CS_GPIO_Port GPIOB
 #define EncoderB_1_Pin GPIO_PIN_8
 #define EncoderB_1_GPIO_Port GPIOA
 #define EncoderB_2_Pin GPIO_PIN_9

@@ -8,10 +8,15 @@ extern float AccelCorrected[3];
 extern uint8_t device_id; // ICM42688设备ID
 extern float icm42688_acc_x, icm42688_acc_y, icm42688_acc_z  ;// ICM42688加速度原始数据       
 extern float icm42688_gyro_x, icm42688_gyro_y, icm42688_gyro_z ; // ICM42688角速度原始速度数据
+extern float icm42688_temp; // 添加温度数据
 
 int8_t Icm42688_Init(void);
 uint8_t icm42688_read_reg(uint8_t reg);
 void Get_MahonyAngle(float* Roll,float* Pitch,float * Yaw);
+void Get_Temp_ICM42688(void); // 添加温度读取函数
+void Icm42688_Calibrate(void); // 添加校准函数
+void Icm42688_Reset(void); // 添加系统重置函数
+void Icm42688_SystemInit(void); // 添加系统初始化函数
 
 enum icm42688_afs
 {
