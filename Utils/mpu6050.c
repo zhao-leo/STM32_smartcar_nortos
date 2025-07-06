@@ -501,7 +501,7 @@ void DisplacementCalculator_Update(DisplacementCalculator_t *calculator, float a
     // 保存当前补偿后加速度用于下次计算
     calculator->prevAccX = compensatedAccX;
     // calculator->prevAccY = compensatedAccY;
-    printf("%.2f,%.2f\r\n", calculator->velocityX,calculator->displacementX);
+    // printf("%.2f,%.2f\r\n", calculator->velocityX,calculator->displacementX);
     // 轻微的速度衰减，防止小误差累积导致速度持续增长
     calculator->velocityX *= 0.995f;
     // calculator->velocityY *= 0.995f;

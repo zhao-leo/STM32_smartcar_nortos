@@ -74,7 +74,7 @@ float Roll, Pitch, Yaw;
 volatile uint8_t update_attitude_flag = 0;
 uint8_t serialBuf[100];
 
-MPU6050_t MPU6050;
+MPU6050_t MPU6050={0};
 
 
 extern Encoder_TypeDef encoderA;
@@ -165,8 +165,8 @@ int main(void)
   PID_Init(&pid_motor_a);
   PID_Init(&pid_motor_b);
   
-  PID_SetSpeed(PID_MOTOR_A, 120);
-  PID_SetSpeed(PID_MOTOR_B, 120);
+  PID_SetSpeed(PID_MOTOR_A, 80);
+  PID_SetSpeed(PID_MOTOR_B, 60);
   HAL_Delay(10);
 
   /* USER CODE END 2 */
@@ -175,7 +175,7 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-    if (update_attitude_flag == 99)
+    if (update_attitude_flag == 19)
     {
       
       // printf("Roll: %.2f, Pitch: %.2f, Yaw:%.2f,", MPU6050.KalmanAngleX, MPU6050.KalmanAngleY,MPU6050.YawAngle);
@@ -186,10 +186,11 @@ int main(void)
       Encoder_Update(&encoderB, ENCODER_B);
       PID_Update();
       printf("%.2f,%.2f,", encoderA.speed_rpm, encoderB.speed_rpm);
-      times=0;
-    }
-    if(sampleing==9){
       MPU6050_Read_All(&hi2c1, &MPU6050);
+      printf("%.2f\r\n", MPU6050.YawAngle);
+    }
+    if(sampleing==49){
+
       sampleing = 0;
     }
 
@@ -308,10 +309,10 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
     //  if(times<99){
     //   times++;
     //  }
-    if(update_attitude_flag<99){
+    if(update_attitude_flag<19){
     update_attitude_flag ++;
     }
-    if(sampleing<9){
+    if(sampleing<49){
       sampleing++;
     }
   }

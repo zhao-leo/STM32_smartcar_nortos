@@ -12,7 +12,7 @@ extern "C" {
 #define ENCODER_TIM_PERIOD        65535          // 编码器定时器计数周期
 #define ENCODER_RESOLUTION        13             // 编码器分辨率(线数)
 #define GEAR_RATIO                34             // 电机减速比
-#define SAMPLE_TIME_MS            100            // 采样时间(ms)
+#define SAMPLE_TIME_MS            20            // 采样时间(ms)
 
 /* 编码器结构体定义 */
 typedef struct

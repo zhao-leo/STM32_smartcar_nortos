@@ -41,7 +41,7 @@ typedef struct {
 #define PID_KD_B         1.0f     // 电机B微分系数默认值
 #define PID_OUTPUT_MAX  999.0f   // 输出最大值（对应PWM最大值）
 #define PID_OUTPUT_MIN  0.0f     // 输出最小值
-#define PID_SAMPLE_TIME 100.0f   // PID采样时间(ms)，应与编码器采样时间一致
+#define PID_SAMPLE_TIME 20.0f   // PID采样时间(ms)，应与编码器采样时间一致
 
 /* 电机PID控制器枚举 */
 typedef enum {
