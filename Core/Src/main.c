@@ -141,8 +141,7 @@ int main(void)
   // PS2Mouse_SetScaling2To1();
   // printf("系统已启动，串口配置完成！\r\n");
   // HAL_Delay(500);
-  while (MPU6050_Init(&hi2c1) == 1)
-    ;
+  // while (MPU6050_Init(&hi2c1) == 1);
   // ssd1306_Init();
   // ssd1306_Fill(White);
   // ssd1306_UpdateScreen();
@@ -162,12 +161,14 @@ int main(void)
   HAL_TIM_Encoder_Start(&htim3, TIM_CHANNEL_2);
   Motor_Init();
   Encoder_Init();
-  PID_Init(&pid_motor_a);
-  PID_Init(&pid_motor_b);
+  Motor_SetSpeed(1, 200, MOTOR_FORWARD);
+  Motor_SetSpeed(2, 200, MOTOR_FORWARD);
+  // PID_Init(&pid_motor_a);
+  // PID_Init(&pid_motor_b);
   
-  PID_SetSpeed(PID_MOTOR_A, 80);
-  PID_SetSpeed(PID_MOTOR_B, 60);
-  HAL_Delay(10);
+  // PID_SetSpeed(PID_MOTOR_A, 80);
+  // PID_SetSpeed(PID_MOTOR_B, 60);
+  // HAL_Delay(10);
 
   /* USER CODE END 2 */
 
@@ -175,19 +176,19 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-    if (update_attitude_flag == 19)
+    if (update_attitude_flag == 199)
     {
       
-      // printf("Roll: %.2f, Pitch: %.2f, Yaw:%.2f,", MPU6050.KalmanAngleX, MPU6050.KalmanAngleY,MPU6050.YawAngle);
-      // printf("%.2f,", MPU6050.YawAngle);
-      // printf("%.2f,%.2f,", displacementCalculator.displacementX, displacementCalculator.displacementY);
+    //   // printf("Roll: %.2f, Pitch: %.2f, Yaw:%.2f,", MPU6050.KalmanAngleX, MPU6050.KalmanAngleY,MPU6050.YawAngle);
+    //   // printf("%.2f,", MPU6050.YawAngle);
+    //   // printf("%.2f,%.2f,", displacementCalculator.displacementX, displacementCalculator.displacementY);
       update_attitude_flag =0;
       Encoder_Update(&encoderA, ENCODER_A);
       Encoder_Update(&encoderB, ENCODER_B);
-      PID_Update();
-      printf("%.2f,%.2f,", encoderA.speed_rpm, encoderB.speed_rpm);
-      MPU6050_Read_All(&hi2c1, &MPU6050);
-      printf("%.2f\r\n", MPU6050.YawAngle);
+    //   PID_Update();
+      printf("A: %.2f, B:%.2f \r\n", encoderA.speed_rpm, encoderB.speed_rpm);
+    //   MPU6050_Read_All(&hi2c1, &MPU6050);
+    //   printf("%.2f\r\n", MPU6050.YawAngle);
     }
     if(sampleing==49){
 
@@ -309,7 +310,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
     //  if(times<99){
     //   times++;
     //  }
-    if(update_attitude_flag<19){
+    if(update_attitude_flag<199){
     update_attitude_flag ++;
     }
     if(sampleing<49){
