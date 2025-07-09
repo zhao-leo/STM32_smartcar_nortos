@@ -30,7 +30,6 @@
 #include <stdio.h>
 #include "ssd1306.h"
 #include "ssd1306_fonts.h"
-#include "PS2Mouse.h"
 #include "utils.h"
 #include <string.h>
 #include "mpu6050.h"
@@ -62,7 +61,6 @@
 
 MPU6050_t MPU6050;
 
-PS2Mouse_Data_t mouseData;
 
 // 显示用变�??????????????????
 int16_t displayValue_x = 0;
@@ -165,7 +163,7 @@ int main(void)
   Motor_SetSpeed(2, 200, MOTOR_FORWARD);
   // PID_Init(&pid_motor_a);
   // PID_Init(&pid_motor_b);
-  
+
   // PID_SetSpeed(PID_MOTOR_A, 80);
   // PID_SetSpeed(PID_MOTOR_B, 60);
   // HAL_Delay(10);
@@ -178,7 +176,7 @@ int main(void)
   {
     if (update_attitude_flag == 199)
     {
-      
+
     //   // printf("Roll: %.2f, Pitch: %.2f, Yaw:%.2f,", MPU6050.KalmanAngleX, MPU6050.KalmanAngleY,MPU6050.YawAngle);
     //   // printf("%.2f,", MPU6050.YawAngle);
     //   // printf("%.2f,%.2f,", displacementCalculator.displacementX, displacementCalculator.displacementY);
