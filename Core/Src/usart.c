@@ -31,8 +31,38 @@ static uint8_t rxBufferIndex = 0;
 static uint8_t rxBufferFlag = 0;
 /* USER CODE END 0 */
 
+UART_HandleTypeDef huart2;
 UART_HandleTypeDef huart3;
 
+/* USART2 init function */
+
+void MX_USART2_UART_Init(void)
+{
+
+  /* USER CODE BEGIN USART2_Init 0 */
+
+  /* USER CODE END USART2_Init 0 */
+
+  /* USER CODE BEGIN USART2_Init 1 */
+
+  /* USER CODE END USART2_Init 1 */
+  huart2.Instance = USART2;
+  huart2.Init.BaudRate = 115200;
+  huart2.Init.WordLength = UART_WORDLENGTH_8B;
+  huart2.Init.StopBits = UART_STOPBITS_1;
+  huart2.Init.Parity = UART_PARITY_NONE;
+  huart2.Init.Mode = UART_MODE_TX_RX;
+  huart2.Init.HwFlowCtl = UART_HWCONTROL_NONE;
+  huart2.Init.OverSampling = UART_OVERSAMPLING_16;
+  if (HAL_UART_Init(&huart2) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN USART2_Init 2 */
+
+  /* USER CODE END USART2_Init 2 */
+
+}
 /* USART3 init function */
 
 void MX_USART3_UART_Init(void)
@@ -67,7 +97,34 @@ void HAL_UART_MspInit(UART_HandleTypeDef* uartHandle)
 {
 
   GPIO_InitTypeDef GPIO_InitStruct = {0};
-  if(uartHandle->Instance==USART3)
+  if(uartHandle->Instance==USART2)
+  {
+  /* USER CODE BEGIN USART2_MspInit 0 */
+
+  /* USER CODE END USART2_MspInit 0 */
+    /* USART2 clock enable */
+    __HAL_RCC_USART2_CLK_ENABLE();
+
+    __HAL_RCC_GPIOA_CLK_ENABLE();
+    /**USART2 GPIO Configuration
+    PA2     ------> USART2_TX
+    PA3     ------> USART2_RX
+    */
+    GPIO_InitStruct.Pin = GPIO_PIN_2;
+    GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
+    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
+    HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
+    GPIO_InitStruct.Pin = GPIO_PIN_3;
+    GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+    GPIO_InitStruct.Pull = GPIO_NOPULL;
+    HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
+  /* USER CODE BEGIN USART2_MspInit 1 */
+
+  /* USER CODE END USART2_MspInit 1 */
+  }
+  else if(uartHandle->Instance==USART3)
   {
   /* USER CODE BEGIN USART3_MspInit 0 */
 
@@ -102,7 +159,25 @@ void HAL_UART_MspInit(UART_HandleTypeDef* uartHandle)
 void HAL_UART_MspDeInit(UART_HandleTypeDef* uartHandle)
 {
 
-  if(uartHandle->Instance==USART3)
+  if(uartHandle->Instance==USART2)
+  {
+  /* USER CODE BEGIN USART2_MspDeInit 0 */
+
+  /* USER CODE END USART2_MspDeInit 0 */
+    /* Peripheral clock disable */
+    __HAL_RCC_USART2_CLK_DISABLE();
+
+    /**USART2 GPIO Configuration
+    PA2     ------> USART2_TX
+    PA3     ------> USART2_RX
+    */
+    HAL_GPIO_DeInit(GPIOA, GPIO_PIN_2|GPIO_PIN_3);
+
+  /* USER CODE BEGIN USART2_MspDeInit 1 */
+
+  /* USER CODE END USART2_MspDeInit 1 */
+  }
+  else if(uartHandle->Instance==USART3)
   {
   /* USER CODE BEGIN USART3_MspDeInit 0 */
 
@@ -127,7 +202,6 @@ void HAL_UART_MspDeInit(UART_HandleTypeDef* uartHandle)
 /* USER CODE BEGIN 1 */
 #include <stdio.h>
 
-// 重定向printf到USART3
 #ifdef __GNUC__
 #define PUTCHAR_PROTOTYPE int __io_putchar(int ch)
 #else
@@ -140,25 +214,21 @@ PUTCHAR_PROTOTYPE
   return ch;
 }
 
-
-
-// 初始化串口接�??
-void UART_StartReceive(void)
+void UART_StartReceive(UART_HandleTypeDef *huart)
 {
-  HAL_UART_Receive_IT(&huart3, &uartRxData, 1);
+  HAL_UART_Receive_IT(huart, &uartRxData, 1);
 }
 
-// 串口接收完成回调函数
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
   if(huart->Instance == USART3)
   {
-    // 如果接收到回车或换行，表示一条命令接收完�?
+
     if(uartRxData == '\r' || uartRxData == '\n')
     {
       if(rxBufferIndex > 0)
       {
-        // 添加结束�?
+        // 添加结束
         uartRxBuffer[rxBufferIndex] = 0;
         // 设置接收完成标志
         rxBufferFlag = 1;
@@ -171,15 +241,15 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
     {
       uartRxBuffer[rxBufferIndex++] = uartRxData;
     }
-    
-    // 继续接收下一个字�?
+
+    // 继续接收下一个字
     HAL_UART_Receive_IT(&huart3, &uartRxData, 1);
   }
 }
 
 /**
   * @brief 解析串口接收到的PID参数
-  * @retval �?
+  * @retval
   */
 void UART_ParsePIDCommand(void)
 {
@@ -187,18 +257,18 @@ void UART_ParsePIDCommand(void)
   {
     // 清除接收标志
     rxBufferFlag = 0;
-    
+
     char *cmd = (char*)uartRxBuffer;
     char param;
     float value;
-    
+
     // 调试输出接收到的原始命令
-    printf("接收到命�?: %s\r\n", cmd);
-    
-    // 解析命令格式: p=1.23 �? i=0.45 �? d=0.67
+    printf("接收到?: %s\r\n", cmd);
+
+    // 解析命令格式: p=1.23 i=0.45 d=0.67
     if(sscanf(cmd, "%c=%f", &param, &value) == 2)
     {
-      // 根据参数类型更新对应的PID�?
+      // 根据参数类型更新对应的PID参数
       switch(param)
       {
         case 'p':
@@ -208,7 +278,7 @@ void UART_ParsePIDCommand(void)
           pid_motor_a.derivative = 0.0f;
           printf("set A Kp=%.2f\r\n", pid_kp_a);
           break;
-          
+
         case 'i':
         case 'I':
           pid_ki_a = value;
@@ -216,7 +286,7 @@ void UART_ParsePIDCommand(void)
           pid_motor_a.derivative = 0.0f;
           printf("set A Ki=%.2f\r\n", pid_ki_a);
           break;
-          
+
         case 'd':
         case 'D':
           pid_kd_a = value;
@@ -224,7 +294,7 @@ void UART_ParsePIDCommand(void)
           pid_motor_a.derivative = 0.0f;
           printf("set A Kd=%.2f\r\n", pid_kd_a);
           break;
-          
+
         case 'q':
         case 'Q':
           pid_kp_b = value;
@@ -232,7 +302,7 @@ void UART_ParsePIDCommand(void)
           pid_motor_b.derivative = 0.0f;
           printf("set B Kp=%.2f\r\n", pid_kp_b);
           break;
-          
+
         case 'w':
         case 'W':
           pid_ki_b = value;
@@ -240,7 +310,7 @@ void UART_ParsePIDCommand(void)
           pid_motor_b.derivative = 0.0f;
           printf("set B Ki=%.2f\r\n", pid_ki_b);
           break;
-          
+
         case 'e':
         case 'E':
           pid_kd_b = value;
@@ -248,7 +318,7 @@ void UART_ParsePIDCommand(void)
           pid_motor_b.derivative = 0.0f;
           printf("set B Kd=%.2f\r\n", pid_kd_b);
           break;
-          
+
         default:
           printf("未知参数: %c\r\n", param);
           break;
@@ -256,15 +326,15 @@ void UART_ParsePIDCommand(void)
     }
     else
     {
-      // 尝试其他解析方式，检查缓冲区是否包含有效的等�?
+      // 尝试其他解析方式，检查缓冲区是否包含有效的等号
       char *equalsign = strchr(cmd, '=');
       if (equalsign != NULL) {
         // 如果找到等号，可能是格式解析问题
-        param = cmd[0]; // 获取第一个字符作为参�?
+        param = cmd[0]; // 获取第一个字符作为参数
         value = atof(equalsign + 1); // 从等号后面开始解析浮点数
-        
-        printf("备用解析: 参数=%c, �?=%.2f\r\n", param, value);
-        
+
+        printf("备用解析: 参数=%c, 值=%.2f\r\n", param, value);
+
         // 使用备用解析结果处理参数
         switch(param)
         {
@@ -275,7 +345,7 @@ void UART_ParsePIDCommand(void)
             pid_motor_a.derivative = 0.0f;
             printf("set A Kp=%.2f\r\n", pid_kp_a);
             break;
-            
+
           case 'i':
           case 'I':
             pid_ki_a = value;
@@ -283,7 +353,7 @@ void UART_ParsePIDCommand(void)
             pid_motor_a.derivative = 0.0f;
             printf("set A Ki=%.2f\r\n", pid_ki_a);
             break;
-            
+
           case 'd':
           case 'D':
             pid_kd_a = value;
@@ -291,7 +361,7 @@ void UART_ParsePIDCommand(void)
             pid_motor_a.derivative = 0.0f;
             printf("set A Kd=%.2f\r\n", pid_kd_a);
             break;
-            
+
           case 'q':
           case 'Q':
             pid_kp_b = value;
@@ -299,7 +369,7 @@ void UART_ParsePIDCommand(void)
             pid_motor_b.derivative = 0.0f;
             printf("set B Kp=%.2f\r\n", pid_kp_b);
             break;
-            
+
           case 'w':
           case 'W':
             pid_ki_b = value;
@@ -307,7 +377,7 @@ void UART_ParsePIDCommand(void)
             pid_motor_b.derivative = 0.0f;
             printf("set B Ki=%.2f\r\n", pid_ki_b);
             break;
-            
+
           case 'e':
           case 'E':
             pid_kd_b = value;
@@ -315,7 +385,7 @@ void UART_ParsePIDCommand(void)
             pid_motor_b.derivative = 0.0f;
             printf("set B Kd=%.2f\r\n", pid_kd_b);
             break;
-            
+
           default:
             printf("未知参数: %c\r\n", param);
             break;

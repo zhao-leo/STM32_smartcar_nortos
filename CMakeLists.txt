@@ -11,7 +11,15 @@ cmake_minimum_required(VERSION 3.22)
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_EXTENSIONS ON)
-add_compile_options(-Wno-unused-parameter)
+
+add_compile_options(
+    -Wno-unused-parameter
+    -Wno-unused-variable
+    -Wno-type-limits
+)
+if(UNIX AND NOT APPLE)
+    add_compile_options(-I/usr/arm-none-eabi/include)
+endif()
 
 # Define the build type
 if(NOT CMAKE_BUILD_TYPE)
@@ -27,12 +35,12 @@ include("cmake/gcc-arm-none-eabi.cmake")
 # Enable compile command to ease indexing with e.g. clangd
 set(CMAKE_EXPORT_COMPILE_COMMANDS TRUE)
 
-# Enable CMake support for ASM and C languages
-enable_language(C ASM)
-
 # Core project settings
 project(${CMAKE_PROJECT_NAME})
 message("Build type: " ${CMAKE_BUILD_TYPE})
+
+# Enable CMake support for ASM and C languages
+enable_language(C ASM)
 
 # Create an executable object type
 add_executable(${CMAKE_PROJECT_NAME})
@@ -49,25 +57,19 @@ target_link_directories(${CMAKE_PROJECT_NAME} PRIVATE
 target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     # Add user sources here
     Utils/motor.c
-    Utils/PS2Mouse.c
     Utils/ssd1306.c
     Utils/ssd1306_fonts.c
-    Utils/utils.c
     Utils/mpu6050.c
     Utils/encoder.c
     Utils/pid_control.c
-    Utils/icm42688.c
-    Utils/MahonyAHRS.c
-    Utils/ICM20948.c
-
-
+    Utils/check.c
+    Utils/flow_decode.c
 )
 
 # Add include paths
 target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
     # Add user defined include paths
     Utils
-
 )
 
 # Add project symbols (macros)
@@ -83,5 +85,4 @@ target_link_libraries(${CMAKE_PROJECT_NAME}
 
 target_link_options(${CMAKE_PROJECT_NAME} PRIVATE
     -u _printf_float
-
 )

@@ -27,17 +27,12 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-#include <stdio.h>
-#include "ssd1306.h"
-#include "ssd1306_fonts.h"
-#include "PS2Mouse.h"
-#include "utils.h"
-#include <string.h>
-#include "mpu6050.h"
-#include "motor.h"
 #include "encoder.h"
+#include "flow_decode.h"
+#include "motor.h"
 #include "pid_control.h"
-
+#include <stdio.h>
+#include <string.h>
 
 /* USER CODE END Includes */
 
@@ -59,27 +54,10 @@
 /* Private variables ---------------------------------------------------------*/
 
 /* USER CODE BEGIN PV */
-
-MPU6050_t MPU6050;
-
-PS2Mouse_Data_t mouseData;
-
-// 显示用变�??????????????????
-int16_t displayValue_x = 0;
-int16_t displayValue_y = 0;
-int16_t times = 0;
-int16_t sampleing = 0;
-float Roll, Pitch, Yaw;
-
 volatile uint8_t update_attitude_flag = 0;
-uint8_t serialBuf[100];
-
-MPU6050_t MPU6050={0};
-
 
 extern Encoder_TypeDef encoderA;
 extern Encoder_TypeDef encoderB;
-
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -101,7 +79,7 @@ int main(void)
 {
 
   /* USER CODE BEGIN 1 */
-
+  PROTOCOL protocol = UPIXELS_NO_TOF;
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -130,29 +108,11 @@ int main(void)
   MX_TIM3_Init();
   MX_TIM4_Init();
   MX_SPI2_Init();
+  MX_USART2_UART_Init();
   /* USER CODE BEGIN 2 */
 
   // Init uart receive
-  UART_StartReceive();
-  // DWT_Init();
-  // // A0=CLOCK A1=DATA
-  // PS2Mouse_Init(GPIOA, GPIO_PIN_0, GPIOA, GPIO_PIN_1, PS2_STREAM_MODE);
-  // printf("PS/2鼠标初始化完成\r\n");
-  // PS2Mouse_SetScaling2To1();
-  // printf("系统已启动，串口配置完成！\r\n");
-  // HAL_Delay(500);
-  // while (MPU6050_Init(&hi2c1) == 1);
-  // ssd1306_Init();
-  // ssd1306_Fill(White);
-  // ssd1306_UpdateScreen();
-  // HAL_Delay(500);
-  // ssd1306_Fill(Black);
-  // ssd1306_UpdateScreen();
-  // 显示标题
-  // ssd1306_SetCursor(0, 0);
-  // ssd1306_WriteString("Mouse Data:", Font_7x10, White);
-  // ssd1306_UpdateScreen();
-
+  UART_StartReceive(&huart3);
   HAL_TIM_Base_Start_IT(&htim2);
 
   HAL_TIM_Encoder_Start(&htim1, TIM_CHANNEL_1);
@@ -165,7 +125,7 @@ int main(void)
   Motor_SetSpeed(2, 200, MOTOR_FORWARD);
   // PID_Init(&pid_motor_a);
   // PID_Init(&pid_motor_b);
-  
+
   // PID_SetSpeed(PID_MOTOR_A, 80);
   // PID_SetSpeed(PID_MOTOR_B, 60);
   // HAL_Delay(10);
@@ -174,80 +134,27 @@ int main(void)
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-  while (1)
-  {
-    if (update_attitude_flag == 199)
-    {
-      
-    //   // printf("Roll: %.2f, Pitch: %.2f, Yaw:%.2f,", MPU6050.KalmanAngleX, MPU6050.KalmanAngleY,MPU6050.YawAngle);
-    //   // printf("%.2f,", MPU6050.YawAngle);
-    //   // printf("%.2f,%.2f,", displacementCalculator.displacementX, displacementCalculator.displacementY);
-      update_attitude_flag =0;
-      Encoder_Update(&encoderA, ENCODER_A);
-      Encoder_Update(&encoderB, ENCODER_B);
-    //   PID_Update();
-      printf("A: %.2f, B:%.2f \r\n", encoderA.speed_rpm, encoderB.speed_rpm);
-    //   MPU6050_Read_All(&hi2c1, &MPU6050);
-    //   printf("%.2f\r\n", MPU6050.YawAngle);
+  while (1) {
+    static int ret;
+    static unsigned char ch;
+    HAL_UART_Receive(&huart2, &ch, 1, 25);
+    ret = upnotof_parse_char(ch);
+    if (!ret) {
+      static int16_t flow_x_integral = 0;
+      static int16_t flow_y_integral = 0;
+      static uint8_t valid = 0;
+      flow_x_integral = up_flow_data.flow_x_integral;
+      flow_y_integral = up_flow_data.flow_y_integral;
+      valid = up_flow_data.valid;
+      printf("flow_x_integral=%d,flow_y_integral=%d,valid=%d\n",
+             flow_x_integral, flow_y_integral, valid);
     }
-    if(sampleing==49){
-
-      sampleing = 0;
-    }
-
-    // UART_ParsePIDCommand();
-
-    // ssd1306_Fill(Black);
-    // 读取鼠标数据
-    // if (PS2Mouse_ReadData(&mouseData))
-    // {
-    //   // 更新显示�??????????????????
-    //   displayValue_x += mouseData.x;
-    //   displayValue_y += mouseData.y;
-
-    //   // 限制范围�??????????????????0-100
-    //   if (displayValue_x > 9999)
-    //     displayValue_x = 0;
-    //   if (displayValue_x < -9999)
-    //     displayValue_x = 0;
-    //   if (displayValue_y > 9999)
-    //     displayValue_y = 0;
-    //   if (displayValue_y < -9999)
-    //     displayValue_y = 0;
-    // 在OLED上显示鼠标数�??????????????????
-
-    // char x_str[16]= {0};
-    // char y_str[16]= {0};
-    // sprintf(x_str, "%d", displayValue_x);
-    // sprintf(y_str, "%d", displayValue_y);
-
-    // char dx_str[16] = {0};
-    // char dy_str[16] = {0};
-    // sprintf(dx_str, "%d", mouseData.x);
-    // sprintf(dy_str, "%d", mouseData.y);
-    // if (mouseData.x != 0 || mouseData.y != 0)
-    // {
-    //   printf("x:");
-    //   printf(x_str);
-    //   printf("\r\n");
-    //   printf("y:");
-    //   printf(y_str);
-    //   printf("\r\n");
-    // }
-
-    // ssd1306_SetCursor(0, 0);
-    // ssd1306_WriteString("Mouse Data:", Font_7x10, White);
-    // ssd1306_SetCursor(0, 10);
-    // ssd1306_WriteString("X: ", Font_7x10, White);
-    // ssd1306_SetCursor(20, 10);
-    // ssd1306_WriteString(dx_str, Font_7x10, White);
-    // ssd1306_SetCursor(0, 20);
-    // ssd1306_WriteString("Y: ", Font_7x10, White);
-    // ssd1306_SetCursor(20, 20);
-    // ssd1306_WriteString(dy_str, Font_7x10, White);
-    // ssd1306_UpdateScreen();
-
-    //   HAL_Delay(2); // 延时2ms,即光电模块回报率
+    // if (update_attitude_flag == 199) {
+    //   update_attitude_flag = 0;
+    //   Encoder_Update(&encoderA, ENCODER_A);
+    //   Encoder_Update(&encoderB, ENCODER_B);
+    //   // PID_Update();
+    //   printf("A: %.2f, B:%.2f \r\n", encoderA.speed_rpm, encoderB.speed_rpm);
     // }
   }
     /* USER CODE END WHILE */
@@ -298,27 +205,6 @@ void SystemClock_Config(void)
 
 /* USER CODE BEGIN 4 */
 
-void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
-{
-  // Check if timer has triggered and update attitude
-  // This is zhongduan functuon, every 1ms proceed once
-  if (htim == &htim2)
-  {
-    /*this is a test code to read MPU6050 data
-
-    */
-    //  if(times<99){
-    //   times++;
-    //  }
-    if(update_attitude_flag<199){
-    update_attitude_flag ++;
-    }
-    if(sampleing<49){
-      sampleing++;
-    }
-  }
-}
-
 /* USER CODE END 4 */
 
 /**
@@ -330,8 +216,7 @@ void Error_Handler(void)
   /* USER CODE BEGIN Error_Handler_Debug */
   /* User can add his own implementation to report the HAL error return state */
   __disable_irq();
-  while (1)
-  {
+  while (1) {
   }
   /* USER CODE END Error_Handler_Debug */
 }
@@ -347,8 +232,9 @@ void Error_Handler(void)
 void assert_failed(uint8_t *file, uint32_t line)
 {
   /* USER CODE BEGIN 6 */
-  /* User can add his own implementation to report the file name and line number,
-     ex: printf("Wrong parameters value: file %s on line %d\r\n", file, line) */
+  /* User can add his own implementation to report the file name and line
+     number, ex: printf("Wrong parameters value: file %s on line %d\r\n", file,
+     line) */
   /* USER CODE END 6 */
 }
 #endif /* USE_FULL_ASSERT */
