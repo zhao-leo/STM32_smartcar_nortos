@@ -20,9 +20,9 @@ echo "Project root directory: $PROJECT_DIR"
 echo "Project name from CMakeLists.txt: $CMAKE_PROJECT_NAME"
 
 # 设置构建类型(默认为Release，可通过参数修改)
-BUILD_TYPE="Release"
-if [ "$1" == "debug" ] || [ "$1" == "Debug" ]; then
-  BUILD_TYPE="Debug"
+BUILD_TYPE="Debug"
+if [ "$1" == "release" ] || [ "$1" == "Release" ]; then
+  BUILD_TYPE="Release"
 fi
 echo "Build type: $BUILD_TYPE"
 
