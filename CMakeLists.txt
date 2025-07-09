@@ -15,6 +15,7 @@ set(CMAKE_C_EXTENSIONS ON)
 add_compile_options(
     -Wno-unused-parameter
     -Wno-unused-variable
+    -Wno-type-limits
 )
 if(UNIX AND NOT APPLE)
     add_compile_options(-I/usr/arm-none-eabi/include)
@@ -58,17 +59,17 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     Utils/motor.c
     Utils/ssd1306.c
     Utils/ssd1306_fonts.c
-    Utils/utils.c
     Utils/mpu6050.c
     Utils/encoder.c
     Utils/pid_control.c
+    Utils/check.c
+    Utils/flow_decode.c
 )
 
 # Add include paths
 target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
     # Add user defined include paths
     Utils
-
 )
 
 # Add project symbols (macros)
