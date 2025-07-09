@@ -16,6 +16,8 @@ add_compile_options(
     -Wno-unused-parameter
     -Wno-unused-variable
     -Wno-type-limits
+    -Wno-empty-body
+    -Wno-sign-compare
 )
 if(UNIX AND NOT APPLE)
     add_compile_options(-I/usr/arm-none-eabi/include)
