@@ -64,6 +64,7 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     Utils/pid_control.c
     Utils/check.c
     Utils/flow_decode.c
+    Utils/wit_gyro.h
 )
 
 # Add include paths

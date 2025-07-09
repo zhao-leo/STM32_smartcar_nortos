@@ -40,7 +40,7 @@ if command -v ninja &> /dev/null; then
   ninja -j$(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 4)
 else
   # 否则使用默认生成器
-  cmake .. -DCMAKE_BUILD_TYPE=$BUILD_TYPE
+  cmake .. -G"Unix Makefiles" -DCMAKE_BUILD_TYPE=$BUILD_TYPE
   echo "Building project with Make..."
   make -j$(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 4)
 fi

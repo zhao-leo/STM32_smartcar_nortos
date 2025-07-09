@@ -33,7 +33,7 @@
 #include "pid_control.h"
 #include <stdio.h>
 #include <string.h>
-
+#include "wit_gyro.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -54,7 +54,17 @@
 /* Private variables ---------------------------------------------------------*/
 
 /* USER CODE BEGIN PV */
-volatile uint8_t update_attitude_flag = 0;
+
+/* The variables about GRYO is declared here */
+
+volatile uint8_t gyro_sample =0; // How many seconds to read data
+WIT_Data_t* gyro_data={0}; // This is data that store the gyro data
+
+/* This is the end of declaration */
+
+/* This is the declaration of the variables of optical flow sensor */
+volatile uint8_t optical_flow_sample = 0; // How many seconds to read data
+/* This is the end of declaration */
 
 extern Encoder_TypeDef encoderA;
 extern Encoder_TypeDef encoderB;
@@ -123,39 +133,59 @@ int main(void)
   Encoder_Init();
   Motor_SetSpeed(1, 200, MOTOR_FORWARD);
   Motor_SetSpeed(2, 200, MOTOR_FORWARD);
+
+  /* Init the Wit_Gyro driver here */
+  if (WIT_Driver_Init() != WIT_HAL_OK)
+  {
+    printf("WIT Driver initialization failed!\r\n");
+  }
+  /* Finish init Wit_Gyro */
+
   // PID_Init(&pid_motor_a);
   // PID_Init(&pid_motor_b);
 
   // PID_SetSpeed(PID_MOTOR_A, 80);
   // PID_SetSpeed(PID_MOTOR_B, 60);
-  // HAL_Delay(10);
 
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-  while (1) {
-    static int ret;
-    static unsigned char ch;
-    HAL_UART_Receive(&huart2, &ch, 1, 25);
-    ret = upnotof_parse_char(ch);
-    if (!ret) {
-      static int16_t flow_x_integral = 0;
-      static int16_t flow_y_integral = 0;
-      static uint8_t valid = 0;
-      flow_x_integral = up_flow_data.flow_x_integral;
-      flow_y_integral = up_flow_data.flow_y_integral;
-      valid = up_flow_data.valid;
-      printf("flow_x_integral=%d,flow_y_integral=%d,valid=%d\n",
-             flow_x_integral, flow_y_integral, valid);
+  while (1)
+  {
+    /* This is the call to the gyroscope code function */
+    if(gyro_sample >= 100) // This means that the gyroscope data is read every 100ms
+    {
+      if (WIT_Driver_ReadData() == WIT_HAL_OK)
+      {
+        gyro_data = WIT_Driver_GetData(); // Get the data pointer of the data
+        gyro_sample = 0; // Reset the sample counter
+      }
+      WIT_Driver_ClearDataFlag();
+    } 
+
+    /* This is the end of this function */
+    
+    /* This is the call to the function of read the data of optical flow sensor */
+    if (optical_flow_sample>=100){
+      static int ret;
+      static unsigned char ch;
+      HAL_UART_Receive(&huart2, &ch, 1, 25);
+      ret = upnotof_parse_char(ch);
+      if (!ret)
+      {
+        static int16_t flow_x_integral = 0;
+        static int16_t flow_y_integral = 0;
+        static uint8_t valid = 0;
+        flow_x_integral = up_flow_data.flow_x_integral;
+        flow_y_integral = up_flow_data.flow_y_integral;
+        valid = up_flow_data.valid;
+        printf("flow_x_integral=%d,flow_y_integral=%d,valid=%d\n",
+              flow_x_integral, flow_y_integral, valid);
+      }
+      optical_flow_sample = 0; // Reset the sample counter
     }
-    // if (update_attitude_flag == 199) {
-    //   update_attitude_flag = 0;
-    //   Encoder_Update(&encoderA, ENCODER_A);
-    //   Encoder_Update(&encoderB, ENCODER_B);
-    //   // PID_Update();
-    //   printf("A: %.2f, B:%.2f \r\n", encoderA.speed_rpm, encoderB.speed_rpm);
-    // }
+    /* This is the end of this function */
   }
     /* USER CODE END WHILE */
 
@@ -205,6 +235,24 @@ void SystemClock_Config(void)
 
 /* USER CODE BEGIN 4 */
 
+/* Timer interruption is created here. Don't delete it!!! */
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
+{
+  // All Timed Tasks Need to be marked here!!!
+  if (htim == &htim2)
+  {
+    if (optical_flow_sample < 99)
+    {
+      optical_flow_sample++;
+    }
+    if (gyro_sample<99)
+    {
+      gyro_sample++;
+    }
+  }
+}
+/* Don't Move This Code!!! */
+
 /* USER CODE END 4 */
 
 /**
@@ -216,7 +264,8 @@ void Error_Handler(void)
   /* USER CODE BEGIN Error_Handler_Debug */
   /* User can add his own implementation to report the HAL error return state */
   __disable_irq();
-  while (1) {
+  while (1)
+  {
   }
   /* USER CODE END Error_Handler_Debug */
 }

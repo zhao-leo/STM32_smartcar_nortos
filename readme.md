@@ -53,3 +53,31 @@ target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
 添加链接选项以支持浮点数打印
 
 # 元器件要外部供电！
+
+# 函数命名规范
+`main`函数中注释一定要规范！变量注释如下
+```C
+/* The variables about GRYO is declared here */
+
+volatile uint8_t gyro_sample =0; // How many seconds to read data
+WIT_Data_t gyro_data={0}; // This is data that store the gyro data
+
+/* This is the end of declaration */
+```
+> 函数注释和规范如下
+```C
+/* Timer interruption is created here. Don't delete it!!! */
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
+{
+  // All Timed Tasks Need to be marked here!!!
+  if (htim == &htim2)
+  {
+    if (update_attitude_flag < 199)
+    {
+      update_attitude_flag++;
+    }
+  }
+}
+/* Don't Move This Code!!! */
+```
+**<mark>一定要写在给出的`cubemx`不会改变的地方！</mark>**
