@@ -16,8 +16,8 @@ done
 
 # 从CMakeLists.txt文件中提取项目名称
 CMAKE_PROJECT_NAME=$(grep -E "set\(CMAKE_PROJECT_NAME" "$PROJECT_DIR/CMakeLists.txt" | sed -E 's/set\(CMAKE_PROJECT_NAME[[:space:]]+([^)]+)\)/\1/' | tr -d ' ')
-echo "Project root directory: $PROJECT_DIR"
-echo "Project name from CMakeLists.txt: $CMAKE_PROJECT_NAME"
+echo -e "\033[36mProject root directory: $PROJECT_DIR\033[0m"
+echo -e "\033[36mProject name from CMakeLists.txt: $CMAKE_PROJECT_NAME\033[0m"
 
 # 设置构建目录和HEX文件路径
 BUILD_DIR="$PROJECT_DIR/build"
@@ -35,7 +35,7 @@ if [ ! -f "$HEX_FILE" ]; then
   exit 1
 fi
 
-echo "Using HEX file: $HEX_FILE"
+echo -e "\033[35mUsing HEX file: $HEX_FILE\033[0m"
 
 # 在 Windows Git Bash 中运行时，转换路径格式
 if [[ "$OSTYPE" == "msys" || "$OSTYPE" == "cygwin" ]]; then
@@ -43,7 +43,7 @@ if [[ "$OSTYPE" == "msys" || "$OSTYPE" == "cygwin" ]]; then
   HEX_FILE_WIN=$(cygpath -w "$HEX_FILE")
   # 将Windows路径中的反斜杠转换为正斜杠
   HEX_FILE_WIN=${HEX_FILE_WIN//\\/\/}
-  echo "Running on Windows Git Bash, converted path: $HEX_FILE_WIN"
+  echo -e "\033[36mRunning on Windows Git Bash, converted path: $HEX_FILE_WIN\033[0m"
   # 使用转换后的 Windows 路径
   openocd -f interface/stlink-v2.cfg -f target/stm32f1x.cfg -c "program \"$HEX_FILE_WIN\" verify reset exit"
 else
