@@ -58,7 +58,7 @@
 /* The variables about GRYO is declared here */
 
 volatile uint8_t gyro_sample = 0; // How many seconds to read data
-uint8_t g_usart2_receivedata; 
+uint8_t g_usart2_receivedata;
 
 /* This is the end of declaration */
 
@@ -66,8 +66,12 @@ uint8_t g_usart2_receivedata;
 volatile uint8_t optical_flow_sample = 0; // How many seconds to read data
 /* This is the end of declaration */
 
+/* This is the declaration of the variables of encoder data*/
 extern Encoder_TypeDef encoderA;
 extern Encoder_TypeDef encoderB;
+volatile uint8_t encoder_sample = 0; // How many seconds to read encoder data
+/* This is the end of declaration to the encoder*/
+
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -82,9 +86,9 @@ void SystemClock_Config(void);
 /* USER CODE END 0 */
 
 /**
-  * @brief  The application entry point.
-  * @retval int
-  */
+ * @brief  The application entry point.
+ * @retval int
+ */
 int main(void)
 {
 
@@ -123,7 +127,7 @@ int main(void)
 
   // Init uart receive
   UART_StartReceive(&huart3);
-  HAL_UART_Receive_IT(&huart2,&g_usart2_receivedata,1);
+  HAL_UART_Receive_IT(&huart2, &g_usart2_receivedata, 1);
   HAL_TIM_Base_Start_IT(&htim2);
 
   HAL_TIM_Encoder_Start(&htim1, TIM_CHANNEL_1);
@@ -132,8 +136,8 @@ int main(void)
   HAL_TIM_Encoder_Start(&htim3, TIM_CHANNEL_2);
   Motor_Init();
   Encoder_Init();
-  // Motor_SetSpeed(1, 200, MOTOR_FORWARD);
-  // Motor_SetSpeed(2, 200, MOTOR_FORWARD);
+  Motor_SetSpeed(1, 200, MOTOR_FORWARD);
+  Motor_SetSpeed(2, 200, MOTOR_FORWARD);
 
   /* Init the Wit_Gyro driver here */
 
@@ -152,11 +156,12 @@ int main(void)
   while (1)
   {
     /* This is the call to the gyroscope code function */
+
     if (gyro_sample >= 99) // This means that the gyroscope data is read every 100ms
     {
-      printf("Roll:%6.2f\r\n",Roll);//显示
-      printf("Pitch:%6.2f\r\n",Pitch);//显示
-      printf("Yaw:%6.2f\r\n",Yaw);//显示
+      printf("Roll:%6.2f\r\n", Roll);
+      printf("Pitch:%6.2f\r\n", Pitch);
+      printf("Yaw:%6.2f\r\n", Yaw);
       gyro_sample = 0; // Reset the sample counter
     }
 
@@ -183,26 +188,41 @@ int main(void)
       optical_flow_sample = 0; // Reset the sample counter
     }
     /* This is the end of this function */
-  }
-    /* USER CODE END WHILE */
 
-    /* USER CODE BEGIN 3 */
+    /* This is the function to print encoder data */
+
+    if (encoder_sample >= 99)
+    {
+      Encoder_Update(&encoderA, encoder_sample + 1); // 或者传入实际的采样时间，如 100
+      Encoder_Update(&encoderB, encoder_sample + 1);
+
+      // 打印编码器数据
+      printf("Encoder A: Speed=%0.2f RPM\r\n", encoderA.speed_rpm);
+      printf("Encoder B: Speed=%0.2f RPM\r\n", encoderB.speed_rpm);
+      encoder_sample = 0;
+    }
+
+    /* This is the end of encoder print function */
+  }
+  /* USER CODE END WHILE */
+
+  /* USER CODE BEGIN 3 */
 
   /* USER CODE END 3 */
 }
 
 /**
-  * @brief System Clock Configuration
-  * @retval None
-  */
+ * @brief System Clock Configuration
+ * @retval None
+ */
 void SystemClock_Config(void)
 {
   RCC_OscInitTypeDef RCC_OscInitStruct = {0};
   RCC_ClkInitTypeDef RCC_ClkInitStruct = {0};
 
   /** Initializes the RCC Oscillators according to the specified parameters
-  * in the RCC_OscInitTypeDef structure.
-  */
+   * in the RCC_OscInitTypeDef structure.
+   */
   RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSE;
   RCC_OscInitStruct.HSEState = RCC_HSE_ON;
   RCC_OscInitStruct.HSEPredivValue = RCC_HSE_PREDIV_DIV1;
@@ -216,9 +236,8 @@ void SystemClock_Config(void)
   }
 
   /** Initializes the CPU, AHB and APB buses clocks
-  */
-  RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK|RCC_CLOCKTYPE_SYSCLK
-                              |RCC_CLOCKTYPE_PCLK1|RCC_CLOCKTYPE_PCLK2;
+   */
+  RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK | RCC_CLOCKTYPE_SYSCLK | RCC_CLOCKTYPE_PCLK1 | RCC_CLOCKTYPE_PCLK2;
   RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
   RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
   RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV2;
@@ -246,6 +265,10 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
     {
       gyro_sample++;
     }
+    if (encoder_sample < 99)
+    {
+      encoder_sample++;
+    }
   }
 }
 /* Don't Move This Code!!! */
@@ -253,9 +276,9 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 /* USER CODE END 4 */
 
 /**
-  * @brief  This function is executed in case of error occurrence.
-  * @retval None
-  */
+ * @brief  This function is executed in case of error occurrence.
+ * @retval None
+ */
 void Error_Handler(void)
 {
   /* USER CODE BEGIN Error_Handler_Debug */
@@ -267,14 +290,14 @@ void Error_Handler(void)
   /* USER CODE END Error_Handler_Debug */
 }
 
-#ifdef  USE_FULL_ASSERT
+#ifdef USE_FULL_ASSERT
 /**
-  * @brief  Reports the name of the source file and the source line number
-  *         where the assert_param error has occurred.
-  * @param  file: pointer to the source file name
-  * @param  line: assert_param error line source number
-  * @retval None
-  */
+ * @brief  Reports the name of the source file and the source line number
+ *         where the assert_param error has occurred.
+ * @param  file: pointer to the source file name
+ * @param  line: assert_param error line source number
+ * @retval None
+ */
 void assert_failed(uint8_t *file, uint32_t line)
 {
   /* USER CODE BEGIN 6 */
