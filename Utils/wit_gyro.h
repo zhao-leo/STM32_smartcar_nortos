@@ -3,8 +3,8 @@
  * @file    wit_gyro.h
  * @brief   WIT运动传感器驱动程序头文件
  * @author  Mingyuan Zhao
- * @version V1.0.0
- * @date    2025-07-09
+ * @version V1.0.1
+ * @date    2025-07-10
  ******************************************************************************
  * @attention
  *
@@ -17,8 +17,8 @@
  * - 其他WIT兼容传感器
  *
  * 通信协议：
- * - I2C接口 (默认地址: 0x50)
- * - 自动检测传感器地址 (0x50-0x57)
+ * - 串口通信 (UART)
+ * - 支持波特率自动检测
  * - 基于HAL库实现
  *
  ******************************************************************************
@@ -32,7 +32,18 @@
 #include "wit_c_sdk.h"
 #include "REG.h"
 #include "main.h"
-#include "i2c.h"
+#include "usart.h"
+
+// 波特率定义
+#define WIT_BAUD_4800    1
+#define WIT_BAUD_9600    2
+#define WIT_BAUD_19200   3
+#define WIT_BAUD_38400   4
+#define WIT_BAUD_57600   5
+#define WIT_BAUD_115200  6
+#define WIT_BAUD_230400  7
+#define WIT_BAUD_460800  8
+#define WIT_BAUD_921600  9
 
 // 数据结构定义
 typedef struct {
@@ -44,12 +55,18 @@ typedef struct {
 } WIT_Data_t;
 
 // 驱动接口函数
-int32_t WIT_Driver_Init(void);
+int32_t WIT_Driver_Init(uint32_t baudRate);
 int32_t WIT_Driver_ReadData(void);
 WIT_Data_t* WIT_Driver_GetData(void);
 void WIT_Driver_ProcessCommand(char cmd);
 uint8_t WIT_Driver_IsDataReady(void);
 void WIT_Driver_ClearDataFlag(void);
+
+// 配置函数
+int32_t WIT_Driver_SetBandwidth(uint8_t bandwidth);
+int32_t WIT_Driver_SetBaudRate(uint8_t baudRate);
+int32_t WIT_Driver_SetOutputRate(uint8_t rate);
+int32_t WIT_Driver_SetContent(uint8_t content);
 
 
 #endif
