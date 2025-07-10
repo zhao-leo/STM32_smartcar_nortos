@@ -24,6 +24,8 @@
 #include "string.h"
 #include "stdlib.h"
 #include "pid_control.h"
+#include "main.h"
+#include "jy61p.h"
 #define UART_RX_BUFFER_SIZE 64
 static uint8_t uartRxBuffer[UART_RX_BUFFER_SIZE];
 static uint8_t uartRxData;
@@ -120,6 +122,9 @@ void HAL_UART_MspInit(UART_HandleTypeDef* uartHandle)
     GPIO_InitStruct.Pull = GPIO_NOPULL;
     HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
+    /* USART2 interrupt Init */
+    HAL_NVIC_SetPriority(USART2_IRQn, 0, 0);
+    HAL_NVIC_EnableIRQ(USART2_IRQn);
   /* USER CODE BEGIN USART2_MspInit 1 */
 
   /* USER CODE END USART2_MspInit 1 */
@@ -173,6 +178,8 @@ void HAL_UART_MspDeInit(UART_HandleTypeDef* uartHandle)
     */
     HAL_GPIO_DeInit(GPIOA, GPIO_PIN_2|GPIO_PIN_3);
 
+    /* USART2 interrupt Deinit */
+    HAL_NVIC_DisableIRQ(USART2_IRQn);
   /* USER CODE BEGIN USART2_MspDeInit 1 */
 
   /* USER CODE END USART2_MspDeInit 1 */
@@ -245,6 +252,11 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
     // 继续接收下一个字
     HAL_UART_Receive_IT(&huart3, &uartRxData, 1);
   }
+  else if(huart->Instance == USART2) // 陀螺仪串口
+  {
+    jy61p_ReceiveData(g_usart2_receivedata); // 调用数据包处理函数
+    HAL_UART_Receive_IT(&huart2, &g_usart2_receivedata, 1); // 继续中断接收
+  }
 }
 
 /**
@@ -263,7 +275,7 @@ void UART_ParsePIDCommand(void)
     float value;
 
     // 调试输出接收到的原始命令
-    printf("接收�??: %s\r\n", cmd);
+    printf("接收�??: %s\r\n", cmd);
 
     // 解析命令格式: p=1.23 i=0.45 d=0.67
     if(sscanf(cmd, "%c=%f", &param, &value) == 2)
@@ -326,14 +338,14 @@ void UART_ParsePIDCommand(void)
     }
     else
     {
-      // 尝试其他解析方式，检查缓冲区是否包含有效的等�?
+      // 尝试其他解析方式，检查缓冲区是否包含有效的等�?
       char *equalsign = strchr(cmd, '=');
       if (equalsign != NULL) {
         // 如果找到等号，可能是格式解析问题
-        param = cmd[0]; // 获取第一个字符作为参�?
+        param = cmd[0]; // 获取第一个字符作为参�?
         value = atof(equalsign + 1); // 从等号后面开始解析浮点数
 
-        printf("备用解析: 参数=%c, �?=%.2f\r\n", param, value);
+        printf("备用解析: 参数=%c, �?=%.2f\r\n", param, value);
 
         // 使用备用解析结果处理参数
         switch(param)
@@ -396,4 +408,7 @@ void UART_ParsePIDCommand(void)
     }
   }
 }
+
+
+// 陀螺仪串口接收回调函数已合并到上面的 HAL_UART_RxCpltCallback 函数中
 /* USER CODE END 1 */

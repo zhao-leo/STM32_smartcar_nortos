@@ -36,7 +36,7 @@ extern "C" {
 
 /* Exported types ------------------------------------------------------------*/
 /* USER CODE BEGIN ET */
-
+extern uint8_t g_usart2_receivedata; // The data received from the USART2,also the data from gyroscope
 /* USER CODE END ET */
 
 /* Exported constants --------------------------------------------------------*/
