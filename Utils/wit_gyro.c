@@ -68,6 +68,18 @@ static WIT_Data_t wit_data = {0};
 static uint8_t device_found = 0;
 static uint32_t current_baud = 9600;
 
+// 串口配置回调函数指针定义
+typedef void (*UartConfigFunc)(uint32_t baudRate);
+
+// 用于存储用户提供的串口配置回调函数
+static UartConfigFunc uart_config_callback = NULL;
+
+// 注册串口配置回调函数
+void WIT_Driver_RegisterUartConfig(void (*configFunc)(uint32_t))
+{
+    uart_config_callback = configFunc;
+}
+
 // 内部函数声明
 static void SensorDataUpdata(uint32_t uiReg, uint32_t uiRegNum);
 static void Delayms(uint16_t ucMs);
@@ -81,8 +93,8 @@ int32_t WIT_Driver_Init(uint32_t baudRate)
 {
     current_baud = baudRate; // 保存当前波特率
     
-    // 初始化串口2用于与传感器通信
-    // 注意：这里假设主函数中已经进行了串口初始化，否则需要在此处初始化串口
+    // 注意：这里假设主函数中已经进行了串口初始化
+    // 如果需要自行初始化串口，可以在此处添加相应代码
     
     WitInit(WIT_PROTOCOL_NORMAL, 0x50);
     // 注册HAL库串口发送函数
@@ -92,7 +104,7 @@ int32_t WIT_Driver_Init(uint32_t baudRate)
     
     printf("\r\n********************** WIT-Motion UART Driver ************************\r\n");
     
-    // 自动扫描设备
+    // 自动扫描设备（尝试不同波特率）
     AutoScanSensor();
     
     if(device_found)
@@ -116,6 +128,7 @@ int32_t WIT_Driver_ReadData(void)
     WitReadReg(AX, 12);
     CmdProcess(); // 处理命令
     
+    // 检查是否有数据更新
     if(s_cDataUpdate)
     {
         // 更新数据结构
@@ -130,6 +143,16 @@ int32_t WIT_Driver_ReadData(void)
         wit_data.mag[2] = sReg[HZ];
         
         wit_data.data_ready = 1;
+        
+        // 根据数据类型设置对应标志位
+        wit_data.acc_updated = (s_cDataUpdate & ACC_UPDATE) ? 1 : 0;
+        wit_data.gyro_updated = (s_cDataUpdate & GYRO_UPDATE) ? 1 : 0;
+        wit_data.angle_updated = (s_cDataUpdate & ANGLE_UPDATE) ? 1 : 0;
+        wit_data.mag_updated = (s_cDataUpdate & MAG_UPDATE) ? 1 : 0;
+        
+        // 清除更新标志，与Main.c不同，我们不在这里清除，以便用户可以查询哪些数据已更新
+        // s_cDataUpdate = 0;
+        
         return WIT_HAL_OK;
     }
     return WIT_HAL_BUSY;
@@ -153,6 +176,22 @@ void WIT_Driver_ClearDataFlag(void)
     wit_data.data_ready = 0;
 }
 
+// 清除特定类型的数据更新标志
+void WIT_Driver_ClearUpdateFlag(uint8_t flag_type)
+{
+    s_cDataUpdate &= ~flag_type;
+    
+    // 同时更新数据结构中的标志
+    if(flag_type & ACC_UPDATE)
+        wit_data.acc_updated = 0;
+    if(flag_type & GYRO_UPDATE)
+        wit_data.gyro_updated = 0;
+    if(flag_type & ANGLE_UPDATE)
+        wit_data.angle_updated = 0;
+    if(flag_type & MAG_UPDATE)
+        wit_data.mag_updated = 0;
+}
+
 // 处理外部命令
 void WIT_Driver_ProcessCommand(char cmd)
 {
@@ -174,8 +213,11 @@ int32_t WIT_Driver_SetBaudRate(uint8_t baudRate)
         // 更新本地波特率记录
         current_baud = c_uiBaud[baudRate];
         
-        // 这里可能需要重新配置本地串口，取决于系统实现
-        // 在实际应用中，你需要在此处重新初始化UART
+        // 如果有注册回调函数，则调用回调函数重新配置串口
+        if(uart_config_callback != NULL)
+        {
+            uart_config_callback(current_baud);
+        }
     }
     return ret;
 }
@@ -200,11 +242,21 @@ static void SensorDataUpdata(uint32_t uiReg, uint32_t uiRegNum)
     {
         switch(uiReg)
         {
-            case AZ: s_cDataUpdate |= ACC_UPDATE; break;
-            case GZ: s_cDataUpdate |= GYRO_UPDATE; break;
-            case HZ: s_cDataUpdate |= MAG_UPDATE; break;
-            case Yaw: s_cDataUpdate |= ANGLE_UPDATE; break;
-            default: s_cDataUpdate |= READ_UPDATE; break;
+            case AZ: 
+                s_cDataUpdate |= ACC_UPDATE;
+                break;
+            case GZ:
+                s_cDataUpdate |= GYRO_UPDATE;
+                break;
+            case HZ:
+                s_cDataUpdate |= MAG_UPDATE;
+                break;
+            case Yaw:
+                s_cDataUpdate |= ANGLE_UPDATE;
+                break;
+            default:
+                s_cDataUpdate |= READ_UPDATE;
+                break;
         }
         uiReg++;
     }
@@ -220,18 +272,16 @@ static void AutoScanSensor(void)
     int i, iRetry;
     
     // 循环尝试不同的波特率
-    for(i = 2; i < 3; i++) 
+    for(i = 1; i < 10; i++) // 从1开始，跳过0索引
     {
         // 更新当前波特率
         current_baud = c_uiBaud[i];
         
-        // 这里需要重新初始化UART，但由于这是一个函数库，
-        // 我们假设调用者会根据返回值重新设置UART，或者在外部已经设置好匹配的波特率
         
         iRetry = 2;
         do
         {
-            s_cDataUpdate = 1;
+            s_cDataUpdate = 0;
             WitReadReg(AX, 3);
             HAL_Delay(100);
             if(s_cDataUpdate != 0)

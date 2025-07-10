@@ -89,7 +89,7 @@ int main(void)
 {
 
   /* USER CODE BEGIN 1 */
-  PROTOCOL protocol = UPIXELS_NO_TOF;
+  PROTOCOL protocol = WIT_PROTOCOL_NORMAL;
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -164,7 +164,7 @@ int main(void)
                gyro_data->angle[0], gyro_data->angle[1], gyro_data->angle[2]);
 
         // Clear the data ready flag
-        WIT_Driver_ClearDataFlag();
+        WIT_Driver_ClearUpdateFlag(WIT_ANGLE_UPDATE);
       }
       else
       {
