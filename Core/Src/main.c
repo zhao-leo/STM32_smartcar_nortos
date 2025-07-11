@@ -31,6 +31,7 @@
 #include "flow_decode.h"
 #include "motor.h"
 #include "pid_control.h"
+#include "angle_control.h"
 #include <stdio.h>
 #include <string.h>
 #include "jy61p.h"
@@ -71,6 +72,10 @@ extern Encoder_TypeDef encoderA;
 extern Encoder_TypeDef encoderB;
 volatile uint8_t encoder_sample = 0; // How many seconds to read encoder data
 /* This is the end of declaration to the encoder*/
+
+/* This is the declaration of the variables of angle PID control*/
+volatile uint8_t angle_pid_sample = 0; // How many ms to update angle PID
+/* This is the end of declaration to the angle PID*/
 
 /* USER CODE END PV */
 
@@ -136,18 +141,15 @@ int main(void)
   HAL_TIM_Encoder_Start(&htim3, TIM_CHANNEL_2);
   Motor_Init();
   Encoder_Init();
-  Motor_SetSpeed(1, 200, MOTOR_FORWARD);
-  Motor_SetSpeed(2, 200, MOTOR_FORWARD);
 
-  /* Init the Wit_Gyro driver here */
-
-  /* Finish init Wit_Gyro */
-
-  // PID_Init(&pid_motor_a);
-  // PID_Init(&pid_motor_b);
-
-  // PID_SetSpeed(PID_MOTOR_A, 80);
-  // PID_SetSpeed(PID_MOTOR_B, 60);
+  /* Init the PID control here */
+  PID_Init(&pid_motor_a);
+  PID_Init(&pid_motor_b);
+  /* Finish init PID control */
+  
+  /* Init the Angle Control System here */
+  AngleControl_Init();
+  /* Finish init Angle Control System */
 
   /* USER CODE END 2 */
 
@@ -268,6 +270,17 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
     if (encoder_sample < 99)
     {
       encoder_sample++;
+    }
+    if (angle_pid_sample < 19) // Update angle PID every 20ms (50Hz)
+    {
+      angle_pid_sample++;
+    }
+    else
+    {
+      /* Update angle PID control here */
+      Angle_PID_Update();
+      PID_Update(); // Also update speed PID for cascade control
+      angle_pid_sample = 0;
     }
   }
 }

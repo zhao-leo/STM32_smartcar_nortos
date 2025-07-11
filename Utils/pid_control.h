@@ -45,22 +45,46 @@ extern "C"
 #define PID_OUTPUT_MIN 0.0f    // 输出最小值
 #define PID_SAMPLE_TIME 100.0f // PID采样时间(ms)，应与编码器采样时间一致
 
+/* 角度环PID控制器参数 */
+#define ANGLE_PID_KP 5.0f       // 角度环比例系数默认值
+#define ANGLE_PID_KI 0.2f       // 角度环积分系数默认值  
+#define ANGLE_PID_KD 2.0f       // 角度环微分系数默认值
+#define ANGLE_PID_OUTPUT_MAX 200.0f // 角度环输出最大值(RPM)
+#define ANGLE_PID_OUTPUT_MIN -200.0f // 角度环输出最小值(RPM)
+
     /* 电机PID控制器枚举 */
     typedef enum
     {
         PID_MOTOR_A = 1,
         PID_MOTOR_B = 2
     } PID_Motor_ID;
+    
+    /* 角度轴枚举 */
+    typedef enum
+    {
+        ANGLE_ROLL = 1,  // 横滚角
+        ANGLE_PITCH = 2, // 俯仰角
+        ANGLE_YAW = 3    // 偏航角
+    } PID_Angle_Axis;
 
     /* 函数声明 */
     void PID_Init(PID_TypeDef *pid);
     float PID_Compute(PID_TypeDef *pid);
     void PID_SetSpeed(PID_Motor_ID motor_id, float target_rpm);
     void PID_Update(void);
+    
+    /* 角度环PID控制函数声明 */
+    void Angle_PID_Init(void);
+    void Angle_PID_SetTarget(PID_Angle_Axis axis, float target_angle);
+    void Angle_PID_Update(void);
+    void Angle_PID_Reset(PID_Angle_Axis axis);
 
     /* 外部变量声明 */
     extern PID_TypeDef pid_motor_a;
     extern PID_TypeDef pid_motor_b;
+    extern PID_TypeDef pid_angle_roll;
+    extern PID_TypeDef pid_angle_pitch;
+    extern PID_TypeDef pid_angle_yaw;
     // 声明各自的全局调节参数
     extern float pid_kp_a;
     extern float pid_ki_a;
@@ -69,6 +93,11 @@ extern "C"
     extern float pid_kp_b;
     extern float pid_ki_b;
     extern float pid_kd_b;
+    
+    // 角度环PID参数
+    extern float angle_pid_kp;
+    extern float angle_pid_ki;  
+    extern float angle_pid_kd;
 
 #ifdef __cplusplus
 }
