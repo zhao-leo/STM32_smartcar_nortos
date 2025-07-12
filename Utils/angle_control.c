@@ -6,7 +6,7 @@
 AngleControl_TypeDef angle_control;
 
 /**
- * @brief 初始化角度控制系统
+ * @brief 初始化角度控制系统（仅支持Yaw轴）
  * @retval None
  */
 void AngleControl_Init(void)
@@ -14,37 +14,39 @@ void AngleControl_Init(void)
     /* 初始化角度控制结构体 */
     angle_control.mode = ANGLE_CONTROL_DISABLED;
     angle_control.enabled = 0;
-    angle_control.target_roll = 0.0f;
-    angle_control.target_pitch = 0.0f;
     angle_control.target_yaw = 0.0f;
-    angle_control.balance_sensitivity = 1.0f;
-    angle_control.turn_sensitivity = 1.0f;
+    angle_control.current_yaw = 0.0f;
+    angle_control.yaw_sensitivity = 1.0f;
     
     /* 初始化角度PID控制器 */
     Angle_PID_Init();
     
     /* 设置初始目标值 */
-    Angle_PID_SetTarget(ANGLE_ROLL, 0.0f);
-    Angle_PID_SetTarget(ANGLE_PITCH, 0.0f);
     Angle_PID_SetTarget(ANGLE_YAW, 0.0f);
 }
 
 /**
- * @brief 启用角度控制
+ * @brief 启用角度控制（仅Yaw轴）
  * @retval None
  */
 void AngleControl_Enable(void)
 {
     angle_control.enabled = 1;
+    angle_control.mode = ANGLE_CONTROL_YAW;
     
     /* 重置PID状态 */
-    Angle_PID_Reset(ANGLE_ROLL);
-    Angle_PID_Reset(ANGLE_PITCH);
     Angle_PID_Reset(ANGLE_YAW);
+    
+    /* 设置当前角度为目标，避免突然转动 */
+    angle_control.target_yaw = Yaw;
+    Angle_PID_SetTarget(ANGLE_YAW, Yaw);
+    
+    /* 启用角度控制 */
+    pid_control_state.angle_control_active = 1;
 }
 
 /**
- * @brief 禁用角度控制
+ * @brief 禁用角度控制（仅Yaw轴）
  * @retval None
  */
 void AngleControl_Disable(void)
@@ -52,135 +54,120 @@ void AngleControl_Disable(void)
     angle_control.enabled = 0;
     angle_control.mode = ANGLE_CONTROL_DISABLED;
     
-    /* 停止所有电机 */
-    PID_SetSpeed(PID_MOTOR_A, 0.0f);
-    PID_SetSpeed(PID_MOTOR_B, 0.0f);
-    
     /* 重置PID状态 */
-    Angle_PID_Reset(ANGLE_ROLL);
-    Angle_PID_Reset(ANGLE_PITCH);
     Angle_PID_Reset(ANGLE_YAW);
 }
 
 /**
- * @brief 设置角度控制模式
- * @param mode: 控制模式
- * @retval None
- */
-void AngleControl_SetMode(AngleControlMode_TypeDef mode)
-{
-    angle_control.mode = mode;
-    
-    if (mode != ANGLE_CONTROL_DISABLED)
-    {
-        angle_control.enabled = 1;
-    }
-    else
-    {
-        AngleControl_Disable();
-    }
-}
-
-/**
- * @brief 设置目标角度（全轴控制）
- * @param roll: 目标Roll角度(度)
- * @param pitch: 目标Pitch角度(度)
- * @param yaw: 目标Yaw角度(度)
- * @retval None
- */
-void AngleControl_SetTarget(float roll, float pitch, float yaw)
-{
-    angle_control.target_roll = roll;
-    angle_control.target_pitch = pitch;
-    angle_control.target_yaw = yaw;
-    
-    Angle_PID_SetTarget(ANGLE_ROLL, roll);
-    Angle_PID_SetTarget(ANGLE_PITCH, pitch);
-    Angle_PID_SetTarget(ANGLE_YAW, yaw);
-}
-
-/**
- * @brief 设置平衡目标角度（主要用于Roll轴平衡控制）
- * @param target_roll: 目标Roll角度(度)
- * @retval None
- */
-void AngleControl_SetBalance(float target_roll)
-{
-    angle_control.target_roll = target_roll;
-    Angle_PID_SetTarget(ANGLE_ROLL, target_roll);
-    
-    if (angle_control.mode == ANGLE_CONTROL_DISABLED)
-    {
-        AngleControl_SetMode(ANGLE_CONTROL_BALANCE);
-    }
-}
-
-/**
- * @brief 设置转向目标角度（主要用于Yaw轴转向控制）
+ * @brief 设置目标偏航角
  * @param target_yaw: 目标Yaw角度(度)
  * @retval None
  */
-void AngleControl_SetTurn(float target_yaw)
+void AngleControl_SetTarget(float target_yaw)
 {
     angle_control.target_yaw = target_yaw;
+    
+    /* 设置PID目标值 */
     Angle_PID_SetTarget(ANGLE_YAW, target_yaw);
     
+    /* 如果当前是禁用状态，自动启用 */
     if (angle_control.mode == ANGLE_CONTROL_DISABLED)
     {
-        AngleControl_SetMode(ANGLE_CONTROL_TURN);
+        AngleControl_Enable();
     }
+    
+    /* 设置为原地转向模式 */
+    PID_SetTurnInPlace(target_yaw);
 }
 
 /**
  * @brief 设置控制灵敏度
- * @param balance_sens: 平衡控制灵敏度 (0.1 - 2.0)
- * @param turn_sens: 转向控制灵敏度 (0.1 - 2.0)
+ * @param yaw_sensitivity: Yaw轴控制灵敏度 (0.1 - 3.0)
  * @retval None
  */
-void AngleControl_SetSensitivity(float balance_sens, float turn_sens)
+void AngleControl_SetSensitivity(float yaw_sensitivity)
 {
     /* 限制灵敏度范围 */
-    if (balance_sens < 0.1f) balance_sens = 0.1f;
-    if (balance_sens > 2.0f) balance_sens = 2.0f;
-    if (turn_sens < 0.1f) turn_sens = 0.1f;
-    if (turn_sens > 2.0f) turn_sens = 2.0f;
+    if (yaw_sensitivity < 0.1f) yaw_sensitivity = 0.1f;
+    if (yaw_sensitivity > 3.0f) yaw_sensitivity = 3.0f;
     
-    angle_control.balance_sensitivity = balance_sens;
-    angle_control.turn_sensitivity = turn_sens;
+    angle_control.yaw_sensitivity = yaw_sensitivity;
     
     /* 动态调整PID参数 */
-    angle_pid_kp = ANGLE_PID_KP * balance_sens;
-    angle_pid_ki = ANGLE_PID_KI * balance_sens;
-    angle_pid_kd = ANGLE_PID_KD * balance_sens;
+    angle_pid_kp = ANGLE_PID_KP * yaw_sensitivity;
+    angle_pid_ki = ANGLE_PID_KI * yaw_sensitivity;
+    angle_pid_kd = ANGLE_PID_KD * yaw_sensitivity;
 }
 
 /**
- * @brief 重置角度控制系统
+ * @brief 重置角度控制系统（仅Yaw轴）
  * @retval None
  */
 void AngleControl_Reset(void)
 {
     /* 重置目标角度为当前角度 */
-    angle_control.target_roll = Roll;
-    angle_control.target_pitch = Pitch;
     angle_control.target_yaw = Yaw;
+    angle_control.current_yaw = Yaw;
     
     /* 更新PID目标值 */
-    Angle_PID_SetTarget(ANGLE_ROLL, Roll);
-    Angle_PID_SetTarget(ANGLE_PITCH, Pitch);
     Angle_PID_SetTarget(ANGLE_YAW, Yaw);
     
     /* 重置PID状态 */
-    Angle_PID_Reset(ANGLE_ROLL);
-    Angle_PID_Reset(ANGLE_PITCH);
     Angle_PID_Reset(ANGLE_YAW);
 }
 
 /**
- * @brief 获取角度控制状态
+ * @brief 获取角度控制状态（仅Yaw轴）
  * @retval 角度控制结构体指针
  */
 AngleControl_TypeDef* AngleControl_GetStatus(void)
 {
+    /* 更新当前角度 */
+    angle_control.current_yaw = Yaw;
     return &angle_control;
+}
+
+/**
+ * @brief 设置直行模式（保持偏航角为0或指定角度）
+ * @param speed: 直行速度(RPM)
+ * @param target_yaw: 目标偏航角(度)，默认0为直行
+ * @retval None
+ */
+void AngleControl_SetStraightDrive(float speed, float target_yaw)
+{
+    angle_control.target_yaw = target_yaw;
+    angle_control.enabled = 1;
+    angle_control.mode = ANGLE_CONTROL_YAW;
+    
+    /* 使用PID系统的直行驱动模式 */
+    PID_SetStraightDrive(speed, target_yaw);
+}
+
+/**
+ * @brief 设置直行模式（偏航角保持为0）
+ * @param speed: 直行速度(RPM)
+ * @retval None
+ */
+void AngleControl_SetStraightDriveZero(float speed)
+{
+    AngleControl_SetStraightDrive(speed, 0.0f);
+}
+
+/**
+ * @brief 检查角度是否已到达目标（容差范围内）
+ * @param tolerance: 角度容差(度)
+ * @retval 1: 已到达, 0: 未到达
+ */
+uint8_t AngleControl_IsTargetReached(float tolerance)
+{
+    if (!angle_control.enabled) return 0;
+    
+    float angle_error = fabsf(angle_control.target_yaw - Yaw);
+    
+    /* 处理角度环绕问题 */
+    if (angle_error > 180.0f) {
+        angle_error = 360.0f - angle_error;
+    }
+    
+    return (angle_error <= tolerance) ? 1 : 0;
 }

@@ -147,9 +147,9 @@ int main(void)
   PID_Init(&pid_motor_b);
   /* Finish init PID control */
   
-  /* Init the Angle Control System here */
-  AngleControl_Init();
-  /* Finish init Angle Control System */
+  /* Init the Yaw Angle PID control here */
+  Angle_PID_Init();
+  /* Finish init Yaw Angle PID control */
 
   /* USER CODE END 2 */
 
@@ -205,6 +205,36 @@ int main(void)
     }
 
     /* This is the end of encoder print function */
+    
+    /* Yaw control example - you can modify this section */
+    static uint32_t yaw_test_time = 0;
+    if (HAL_GetTick() - yaw_test_time > 8000) // Every 8 seconds change target
+    {
+      static float target_angles[] = {0.0f, 90.0f, 180.0f, -90.0f};
+      static uint8_t angle_index = 0;
+      
+      // Set next target angle using simplified interface
+      YawControl_SetTarget(target_angles[angle_index]);
+      printf("Yaw Target Set to: %.1f degrees\r\n", target_angles[angle_index]);
+      
+      angle_index = (angle_index + 1) % 4;
+      yaw_test_time = HAL_GetTick();
+    }
+    
+    /* Print yaw status every 2 seconds */
+    static uint32_t status_print_time = 0;
+    if (HAL_GetTick() - status_print_time > 2000)
+    {
+      float error = pid_angle_yaw.setpoint - Yaw;
+      if (error > 180.0f) error -= 360.0f;
+      else if (error < -180.0f) error += 360.0f;
+      
+      printf("Yaw Control: Target=%.1f°, Current=%.1f°, Error=%.1f°, Output=%.1f\r\n", 
+             pid_angle_yaw.setpoint, Yaw, error, pid_angle_yaw.output);
+      
+      status_print_time = HAL_GetTick();
+    }
+    /* End of yaw control example */
   }
   /* USER CODE END WHILE */
 

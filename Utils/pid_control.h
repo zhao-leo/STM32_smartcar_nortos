@@ -59,11 +59,9 @@ extern "C"
         PID_MOTOR_B = 2
     } PID_Motor_ID;
     
-    /* 角度轴枚举 */
+    /* 角度轴枚举（仅保留Yaw轴） */
     typedef enum
     {
-        ANGLE_ROLL = 1,  // 横滚角
-        ANGLE_PITCH = 2, // 俯仰角
         ANGLE_YAW = 3    // 偏航角
     } PID_Angle_Axis;
 
@@ -78,13 +76,38 @@ extern "C"
     void Angle_PID_SetTarget(PID_Angle_Axis axis, float target_angle);
     void Angle_PID_Update(void);
     void Angle_PID_Reset(PID_Angle_Axis axis);
+    
+    /* 简化的Yaw控制接口 */
+    void YawControl_SetTarget(float target_yaw);
 
+    /* 混合控制模式函数声明 */
+    void PID_SetDifferentialSpeed(float base_speed, float yaw_correction);
+    void PID_SetStraightDrive(float target_speed, float target_yaw);
+    void PID_SetTurnInPlace(float target_yaw);
+    void PID_StopAll(void);
+    
+    /* 控制模式枚举 */
+    typedef enum
+    {
+        PID_MODE_MANUAL = 0,        // 手动模式
+        PID_MODE_STRAIGHT_DRIVE,    // 直行保持模式
+        PID_MODE_TURN_IN_PLACE,     // 原地转向模式
+        PID_MODE_DIFFERENTIAL       // 差速控制模式
+    } PID_ControlMode;
+    
+    /* 控制状态结构体 */
+    typedef struct
+    {
+        PID_ControlMode mode;       // 当前控制模式
+        float base_speed;           // 基础速度(用于直行)
+        float target_yaw;           // 目标偏航角
+        uint8_t angle_control_active; // 角度控制是否激活
+    } PID_ControlState;
+    
     /* 外部变量声明 */
     extern PID_TypeDef pid_motor_a;
     extern PID_TypeDef pid_motor_b;
-    extern PID_TypeDef pid_angle_roll;
-    extern PID_TypeDef pid_angle_pitch;
-    extern PID_TypeDef pid_angle_yaw;
+    extern PID_TypeDef pid_angle_yaw;  // Yaw轴PID控制器
     // 声明各自的全局调节参数
     extern float pid_kp_a;
     extern float pid_ki_a;
@@ -98,6 +121,8 @@ extern "C"
     extern float angle_pid_kp;
     extern float angle_pid_ki;  
     extern float angle_pid_kd;
+
+    extern PID_ControlState pid_control_state;
 
 #ifdef __cplusplus
 }
