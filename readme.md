@@ -28,7 +28,7 @@
 
 # 引脚图
 以下是STM32F103C8T6引脚图
-![](./C8T6引脚图.png)
+![](./picture/C8T6引脚图.png)
 
 # 增加Utils部分
 
@@ -81,3 +81,32 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 /* Don't Move This Code!!! */
 ```
 **<mark>一定要写在给出的`cubemx`不会改变的地方！</mark>**
+
+# 一些Trick
+
+## PID 调节思路
+该思路其实是`copilot`给出的,感谢伟大的AI！
+下面我将对级联pid做出一些解释，级联PID示意图如下：
+![](./picture/PID示意图.png)
+我们可以在main函数中直接调用阶梯状升级的速度，即用`PID_SetTarget`这样我们就可以看出速度调节是否有效，临时测试代码
+```C
+// 在main函数中添加测试代码
+void Test_SpeedPID_Tuning(void)
+{
+    static uint32_t test_timer = 0;
+    test_timer++;
+    
+    // 每2秒切换一次目标速度，测试阶跃响应
+    if (test_timer % 2000 == 0) {
+        static float test_speeds[] = {0, 50, 100, -50, -100};
+        static uint8_t speed_index = 0;
+        
+        float target_speed = test_speeds[speed_index];
+        PID_SetSpeed(PID_MOTOR_A, target_speed);
+        PID_SetSpeed(PID_MOTOR_B, target_speed);
+        
+        printf("Target Speed: %.1f RPM\r\n", target_speed);
+        speed_index = (speed_index + 1) % 5;
+    }
+}
+```

@@ -1,6 +1,7 @@
 #include "angle_control.h"
 #include "pid_control.h"
 #include "jy61p.h"
+#include <math.h>
 
 /* 角度控制全局实例 */
 AngleControl_TypeDef angle_control;

@@ -226,7 +226,7 @@ static float Angle_Difference(float target, float current)
 }
 
 /**
- * @brief 初始化角度环PID控制器（仅Yaw轴）
+ * @brief 初始化角度环纯PID算法
  * @retval None
  */
 void Angle_PID_Init(void)

@@ -77,6 +77,10 @@ volatile uint8_t encoder_sample = 0; // How many seconds to read encoder data
 volatile uint8_t angle_pid_sample = 0; // How many ms to update angle PID
 /* This is the end of declaration to the angle PID*/
 
+/* This is the sapce for you to declare temp variables */
+volatile uint8_t pid_temp = 0;
+/* This is the end of temp space */
+
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -145,10 +149,12 @@ int main(void)
   /* Init the PID control here */
   PID_Init(&pid_motor_a);
   PID_Init(&pid_motor_b);
+  PID_SetSpeed(PID_MOTOR_A, 100.0f); // Set initial speed for motor A
+  PID_SetSpeed(PID_MOTOR_B, 100.0f);
   /* Finish init PID control */
-  
+
   /* Init the Yaw Angle PID control here */
-  Angle_PID_Init();
+  AngleControl_Init();
   /* Finish init Yaw Angle PID control */
 
   /* USER CODE END 2 */
@@ -161,9 +167,9 @@ int main(void)
 
     if (gyro_sample >= 99) // This means that the gyroscope data is read every 100ms
     {
-      printf("Roll:%6.2f\r\n", Roll);
-      printf("Pitch:%6.2f\r\n", Pitch);
-      printf("Yaw:%6.2f\r\n", Yaw);
+      // printf("Roll:%6.2f\r\n", Roll);
+      // printf("Pitch:%6.2f\r\n", Pitch);
+      // printf("Yaw:%6.2f\r\n", Yaw);
       gyro_sample = 0; // Reset the sample counter
     }
 
@@ -193,48 +199,34 @@ int main(void)
 
     /* This is the function to print encoder data */
 
-    if (encoder_sample >= 99)
+    if (encoder_sample >= 19)
     {
-      Encoder_Update(&encoderA, encoder_sample + 1); // 或者传入实际的采样时间，如 100
+      Encoder_Update(&encoderA, encoder_sample + 1); // Put into the sample time(ms)
       Encoder_Update(&encoderB, encoder_sample + 1);
 
+      PID_Update();
       // 打印编码器数据
-      printf("Encoder A: Speed=%0.2f RPM\r\n", encoderA.speed_rpm);
-      printf("Encoder B: Speed=%0.2f RPM\r\n", encoderB.speed_rpm);
+      printf("EncoderA:%0.2f,", encoderA.speed_rpm);
+      printf("EncoderB:%0.2f\r\n", encoderB.speed_rpm);
       encoder_sample = 0;
     }
 
     /* This is the end of encoder print function */
-    
-    /* Yaw control example - you can modify this section */
-    static uint32_t yaw_test_time = 0;
-    if (HAL_GetTick() - yaw_test_time > 8000) // Every 8 seconds change target
-    {
-      static float target_angles[] = {0.0f, 90.0f, 180.0f, -90.0f};
-      static uint8_t angle_index = 0;
-      
-      // Set next target angle using simplified interface
-      YawControl_SetTarget(target_angles[angle_index]);
-      printf("Yaw Target Set to: %.1f degrees\r\n", target_angles[angle_index]);
-      
-      angle_index = (angle_index + 1) % 4;
-      yaw_test_time = HAL_GetTick();
-    }
-    
-    /* Print yaw status every 2 seconds */
-    static uint32_t status_print_time = 0;
-    if (HAL_GetTick() - status_print_time > 2000)
-    {
-      float error = pid_angle_yaw.setpoint - Yaw;
-      if (error > 180.0f) error -= 360.0f;
-      else if (error < -180.0f) error += 360.0f;
-      
-      printf("Yaw Control: Target=%.1f°, Current=%.1f°, Error=%.1f°, Output=%.1f\r\n", 
-             pid_angle_yaw.setpoint, Yaw, error, pid_angle_yaw.output);
-      
-      status_print_time = HAL_GetTick();
-    }
-    /* End of yaw control example */
+
+    /* This is the space for you to pile up your test code */
+    // if (pid_temp % 14999 == 0)
+    // {
+    //   static float test_speeds[] = {0, 50, 100, -50, -100};
+    //   static uint8_t speed_index = 0;
+
+    //   float target_speed = test_speeds[speed_index];
+    //   PID_SetSpeed(PID_MOTOR_A, target_speed);
+    //   PID_SetSpeed(PID_MOTOR_B, target_speed);
+
+    //   speed_index = (speed_index + 1) % 5;
+    //   pid_temp = 0; // Reset temp counter
+    // }
+    /* This is the end of your garbage space */
   }
   /* USER CODE END WHILE */
 
@@ -291,27 +283,26 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
   {
     if (optical_flow_sample < 99)
     {
-      optical_flow_sample++;
+      optical_flow_sample = 0;
     }
     if (gyro_sample < 99)
     {
       gyro_sample++;
     }
-    if (encoder_sample < 99)
+    if (encoder_sample < 19)
     {
       encoder_sample++;
     }
     if (angle_pid_sample < 19) // Update angle PID every 20ms (50Hz)
     {
-      angle_pid_sample++;
-    }
-    else
-    {
-      /* Update angle PID control here */
-      Angle_PID_Update();
-      PID_Update(); // Also update speed PID for cascade control
       angle_pid_sample = 0;
     }
+    /* This is the space for your temp variables */
+    if (pid_temp < 15000)
+    {
+      pid_temp++;
+    }
+    /* End of temp */
   }
 }
 /* Don't Move This Code!!! */
