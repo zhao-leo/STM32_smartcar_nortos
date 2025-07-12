@@ -112,15 +112,15 @@ void HAL_UART_MspInit(UART_HandleTypeDef* uartHandle)
     PA2     ------> USART2_TX
     PA3     ------> USART2_RX
     */
-    GPIO_InitStruct.Pin = GPIO_PIN_2;
+    GPIO_InitStruct.Pin = UART_TX_GYRO_Pin;
     GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
     GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
-    HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+    HAL_GPIO_Init(UART_TX_GYRO_GPIO_Port, &GPIO_InitStruct);
 
-    GPIO_InitStruct.Pin = GPIO_PIN_3;
+    GPIO_InitStruct.Pin = UART_RX_GYRO_Pin;
     GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
     GPIO_InitStruct.Pull = GPIO_NOPULL;
-    HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+    HAL_GPIO_Init(UART_RX_GYRO_GPIO_Port, &GPIO_InitStruct);
 
     /* USART2 interrupt Init */
     HAL_NVIC_SetPriority(USART2_IRQn, 0, 0);
@@ -142,15 +142,15 @@ void HAL_UART_MspInit(UART_HandleTypeDef* uartHandle)
     PB10     ------> USART3_TX
     PB11     ------> USART3_RX
     */
-    GPIO_InitStruct.Pin = GPIO_PIN_10;
+    GPIO_InitStruct.Pin = UART_TX_BLUE_Pin;
     GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
     GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
-    HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+    HAL_GPIO_Init(UART_TX_BLUE_GPIO_Port, &GPIO_InitStruct);
 
-    GPIO_InitStruct.Pin = GPIO_PIN_11;
+    GPIO_InitStruct.Pin = UART_RX_BLUE_Pin;
     GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
     GPIO_InitStruct.Pull = GPIO_NOPULL;
-    HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+    HAL_GPIO_Init(UART_RX_BLUE_GPIO_Port, &GPIO_InitStruct);
 
     /* USART3 interrupt Init */
     HAL_NVIC_SetPriority(USART3_IRQn, 0, 0);
@@ -176,7 +176,7 @@ void HAL_UART_MspDeInit(UART_HandleTypeDef* uartHandle)
     PA2     ------> USART2_TX
     PA3     ------> USART2_RX
     */
-    HAL_GPIO_DeInit(GPIOA, GPIO_PIN_2|GPIO_PIN_3);
+    HAL_GPIO_DeInit(GPIOA, UART_TX_GYRO_Pin|UART_RX_GYRO_Pin);
 
     /* USART2 interrupt Deinit */
     HAL_NVIC_DisableIRQ(USART2_IRQn);
@@ -196,7 +196,7 @@ void HAL_UART_MspDeInit(UART_HandleTypeDef* uartHandle)
     PB10     ------> USART3_TX
     PB11     ------> USART3_RX
     */
-    HAL_GPIO_DeInit(GPIOB, GPIO_PIN_10|GPIO_PIN_11);
+    HAL_GPIO_DeInit(GPIOB, UART_TX_BLUE_Pin|UART_RX_BLUE_Pin);
 
     /* USART3 interrupt Deinit */
     HAL_NVIC_DisableIRQ(USART3_IRQn);
@@ -252,9 +252,9 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
     // 继续接收下一个字
     HAL_UART_Receive_IT(&huart3, &uartRxData, 1);
   }
-  else if(huart->Instance == USART2) // 陀螺仪串口
+  else if(huart->Instance == USART2) // �?螺仪串口
   {
-    jy61p_ReceiveData(g_usart2_receivedata); // 调用数据包处理函数
+    jy61p_ReceiveData(g_usart2_receivedata); // 调用数据包处理函�?
     HAL_UART_Receive_IT(&huart2, &g_usart2_receivedata, 1); // 继续中断接收
   }
 }
@@ -275,7 +275,7 @@ void UART_ParsePIDCommand(void)
     float value;
 
     // 调试输出接收到的原始命令
-    printf("接收�??: %s\r\n", cmd);
+    printf("接收�???: %s\r\n", cmd);
 
     // 解析命令格式: p=1.23 i=0.45 d=0.67
     if(sscanf(cmd, "%c=%f", &param, &value) == 2)
@@ -338,14 +338,14 @@ void UART_ParsePIDCommand(void)
     }
     else
     {
-      // 尝试其他解析方式，检查缓冲区是否包含有效的等�?
+      // 尝试其他解析方式，检查缓冲区是否包含有效的等�??
       char *equalsign = strchr(cmd, '=');
       if (equalsign != NULL) {
         // 如果找到等号，可能是格式解析问题
-        param = cmd[0]; // 获取第一个字符作为参�?
+        param = cmd[0]; // 获取第一个字符作为参�??
         value = atof(equalsign + 1); // 从等号后面开始解析浮点数
 
-        printf("备用解析: 参数=%c, �?=%.2f\r\n", param, value);
+        printf("备用解析: 参数=%c, �??=%.2f\r\n", param, value);
 
         // 使用备用解析结果处理参数
         switch(param)
@@ -410,5 +410,5 @@ void UART_ParsePIDCommand(void)
 }
 
 
-// 陀螺仪串口接收回调函数已合并到上面的 HAL_UART_RxCpltCallback 函数中
+// �?螺仪串口接收回调函数已合并到上面�? HAL_UART_RxCpltCallback 函数�?
 /* USER CODE END 1 */

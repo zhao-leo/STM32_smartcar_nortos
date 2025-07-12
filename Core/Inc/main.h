@@ -61,6 +61,10 @@ void Error_Handler(void);
 #define MotorA_control_1_GPIO_Port GPIOC
 #define MotorA_control_2_Pin GPIO_PIN_15
 #define MotorA_control_2_GPIO_Port GPIOC
+#define UART_TX_GYRO_Pin GPIO_PIN_2
+#define UART_TX_GYRO_GPIO_Port GPIOA
+#define UART_RX_GYRO_Pin GPIO_PIN_3
+#define UART_RX_GYRO_GPIO_Port GPIOA
 #define MotorB_control_1_Pin GPIO_PIN_4
 #define MotorB_control_1_GPIO_Port GPIOA
 #define MotorB_control_2_Pin GPIO_PIN_5
@@ -69,6 +73,10 @@ void Error_Handler(void);
 #define EncoderA_1_GPIO_Port GPIOA
 #define EncoderA_2_Pin GPIO_PIN_7
 #define EncoderA_2_GPIO_Port GPIOA
+#define UART_TX_BLUE_Pin GPIO_PIN_10
+#define UART_TX_BLUE_GPIO_Port GPIOB
+#define UART_RX_BLUE_Pin GPIO_PIN_11
+#define UART_RX_BLUE_GPIO_Port GPIOB
 #define SPI_CS_Pin GPIO_PIN_12
 #define SPI_CS_GPIO_Port GPIOB
 #define EncoderB_1_Pin GPIO_PIN_8
